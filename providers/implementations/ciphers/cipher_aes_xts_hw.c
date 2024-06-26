@@ -104,10 +104,36 @@ static int cipher_hw_aesni_xts_initkey(PROV_CIPHER_CTX *ctx,
 {
     PROV_AES_XTS_CTX *xctx = (PROV_AES_XTS_CTX *)ctx;
 
+    void (*aesni_xts_enc)(const unsigned char *in,
+                unsigned char *out,
+                size_t length,
+                const AES_KEY *key1, const AES_KEY *key2,
+                const unsigned char iv[16]);
+    void (*aesni_xts_dec)(const unsigned char *in,
+                unsigned char *out,
+                size_t length,
+                const AES_KEY *key1, const AES_KEY *key2,
+                const unsigned char iv[16]);
+
+    aesni_xts_enc = aesni_xts_encrypt;
+    aesni_xts_dec = aesni_xts_decrypt;
+
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    if (aesni_xts_avx512_eligible()) {
+        if (keylen == 64) {
+            aesni_xts_enc = aesni_xts_256_encrypt_avx512;
+            aesni_xts_dec = aesni_xts_256_decrypt_avx512;
+        } else if (keylen == 32) {
+            aesni_xts_enc = aesni_xts_128_encrypt_avx512;
+            aesni_xts_dec = aesni_xts_128_decrypt_avx512;
+        }
+    }
+#endif
+
     XTS_SET_KEY_FN(aesni_set_encrypt_key, aesni_set_decrypt_key,
                    aesni_encrypt, aesni_decrypt,
-                   aesni_xts_encrypt, aesni_xts_decrypt);
-    return 1;
+                   aesni_xts_enc, aesni_xts_dec);
+return 1;
 }
 
 # define PROV_CIPHER_HW_declare_xts()                                          \
