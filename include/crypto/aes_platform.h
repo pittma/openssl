@@ -59,6 +59,15 @@ void AES_xts_decrypt(const unsigned char *inp, unsigned char *out, size_t len,
                      const unsigned char iv[16]);
 # endif /* AES_XTS_ASM */
 
+# if defined(AES_XTS_ASM) && defined(AES_XTS_AVX512)
+void aes_hw_xts_encrypt_avx512(const unsigned char *inp, unsigned char *out, size_t len,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const unsigned char iv[16]);
+void aes_hw_xts_decrypt_avx512(const unsigned char *inp, unsigned char *out, size_t len,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const unsigned char iv[16]);
+#endif /* AES_XTS_AVX512 */
+
 # if defined(OPENSSL_CPUID_OBJ)
 #  if (defined(__powerpc__) || defined(__POWERPC__) || defined(_ARCH_PPC))
 #   include "crypto/ppc_arch.h"

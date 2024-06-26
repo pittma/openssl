@@ -43,7 +43,10 @@ static int cipher_hw_aes_xts_generic_initkey(PROV_CIPHER_CTX *ctx,
     OSSL_xts_stream_fn stream_enc = NULL;
     OSSL_xts_stream_fn stream_dec = NULL;
 
-#ifdef AES_XTS_ASM
+#if defined(AES_XTS_ASM) && defined(AES_XTS_AVX512)
+    stream_enc = aes_hw_xts_encrypt_avx512;
+    stream_dec = aes_hw_xts_decrypt_avx512;
+#elif defined(AES_XTS_ASM)
     stream_enc = AES_xts_encrypt;
     stream_dec = AES_xts_decrypt;
 #endif /* AES_XTS_ASM */
