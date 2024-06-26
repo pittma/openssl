@@ -299,11 +299,19 @@ static int aesni_xts_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         if (enc) {
             aesni_set_encrypt_key(key, bits, &xctx->ks1.ks);
             xctx->xts.block1 = (block128_f) aesni_encrypt;
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+            xctx->stream = aesni_xts_encrypt_avx512;
+#else
             xctx->stream = aesni_xts_encrypt;
+#endif
         } else {
             aesni_set_decrypt_key(key, bits, &xctx->ks1.ks);
             xctx->xts.block1 = (block128_f) aesni_decrypt;
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+            xctx->stream = aesni_xts_decrypt_avx512;
+#else
             xctx->stream = aesni_xts_decrypt;
+#endif
         }
 
         aesni_set_encrypt_key(key + bytes, bits, &xctx->ks2.ks);

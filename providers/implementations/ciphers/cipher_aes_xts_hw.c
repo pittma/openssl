@@ -106,8 +106,12 @@ static int cipher_hw_aesni_xts_initkey(PROV_CIPHER_CTX *ctx,
 
     XTS_SET_KEY_FN(aesni_set_encrypt_key, aesni_set_decrypt_key,
                    aesni_encrypt, aesni_decrypt,
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+                   aesni_xts_encrypt_avx512, aesni_xts_decrypt_avx512);
+#else
                    aesni_xts_encrypt, aesni_xts_decrypt);
-    return 1;
+#endif
+return 1;
 }
 
 # define PROV_CIPHER_HW_declare_xts()                                          \
