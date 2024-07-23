@@ -299,11 +299,11 @@ static int aesni_xts_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         if (enc) {
             aesni_set_encrypt_key(key, bits, &xctx->ks1.ks);
             xctx->xts.block1 = (block128_f) aesni_encrypt;
-            xctx->stream = aesni_xts_encrypt;
+            xctx->stream = aes_hw_xts_encrypt_avx512;
         } else {
             aesni_set_decrypt_key(key, bits, &xctx->ks1.ks);
             xctx->xts.block1 = (block128_f) aesni_decrypt;
-            xctx->stream = aesni_xts_decrypt;
+            xctx->stream = aes_hw_xts_decrypt_avx512;
         }
 
         aesni_set_encrypt_key(key + bytes, bits, &xctx->ks2.ks);
@@ -3256,9 +3256,7 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 return 0;
             }
 
-#if defined(AES_XTS_ASM) && defined(AES_XTS_AVX512)
-            xctx->stream = enc ? aes_hw_xts_encrypt_avx512 : aes_hw_xts_decrypt_avx512;
-#elif defined(AES_XTS_ASM)
+#ifdef AES_XTS_ASM
             xctx->stream = enc ? AES_xts_encrypt : AES_xts_decrypt;
 #else
             xctx->stream = NULL;

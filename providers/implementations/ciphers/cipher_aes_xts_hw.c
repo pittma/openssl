@@ -43,10 +43,7 @@ static int cipher_hw_aes_xts_generic_initkey(PROV_CIPHER_CTX *ctx,
     OSSL_xts_stream_fn stream_enc = NULL;
     OSSL_xts_stream_fn stream_dec = NULL;
 
-#if defined(AES_XTS_ASM) && defined(AES_XTS_AVX512)
-    stream_enc = aes_hw_xts_encrypt_avx512;
-    stream_dec = aes_hw_xts_decrypt_avx512;
-#elif defined(AES_XTS_ASM)
+#ifdef AES_XTS_ASM
     stream_enc = AES_xts_encrypt;
     stream_dec = AES_xts_decrypt;
 #endif /* AES_XTS_ASM */
@@ -109,7 +106,7 @@ static int cipher_hw_aesni_xts_initkey(PROV_CIPHER_CTX *ctx,
 
     XTS_SET_KEY_FN(aesni_set_encrypt_key, aesni_set_decrypt_key,
                    aesni_encrypt, aesni_decrypt,
-                   aesni_xts_encrypt, aesni_xts_decrypt);
+                   aes_hw_xts_encrypt_avx512, aes_hw_xts_decrypt_avx512);
     return 1;
 }
 
