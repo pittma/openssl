@@ -265,6 +265,61 @@ static int aesni_gcm_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 static int aesni_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                             const unsigned char *in, size_t len);
 
+static int aesni_xts_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+                              const unsigned char *iv, int enc)
+{
+    EVP_AES_XTS_CTX *xctx = EVP_C_DATA(EVP_AES_XTS_CTX,ctx);
+
+    if (iv == NULL && key == NULL)
+        return 1;
+
+    if (key) {
+        /* The key is two half length keys in reality */
+        const int keylen = EVP_CIPHER_CTX_get_key_length(ctx);
+        const int bytes = keylen / 2;
+        const int bits = bytes * 8;
+
+        if (keylen <= 0) {
+            ERR_raise(ERR_LIB_EVP, EVP_R_INVALID_KEY_LENGTH);
+            return 0;
+        }
+        /*
+         * Verify that the two keys are different.
+         *
+         * This addresses Rogaway's vulnerability.
+         * See comment in aes_xts_init_key() below.
+         */
+        if ((!allow_insecure_decrypt || enc)
+                && CRYPTO_memcmp(key, key + bytes, bytes) == 0) {
+            ERR_raise(ERR_LIB_EVP, EVP_R_XTS_DUPLICATED_KEYS);
+            return 0;
+        }
+
+        /* key_len is two AES keys */
+        if (enc) {
+            aesni_set_encrypt_key(key, bits, &xctx->ks1.ks);
+            xctx->xts.block1 = (block128_f) aesni_encrypt;
+            xctx->stream = aes_hw_xts_encrypt_avx512;
+        } else {
+            aesni_set_decrypt_key(key, bits, &xctx->ks1.ks);
+            xctx->xts.block1 = (block128_f) aesni_decrypt;
+            xctx->stream = aes_hw_xts_decrypt_avx512;
+        }
+
+        aesni_set_encrypt_key(key + bytes, bits, &xctx->ks2.ks);
+        xctx->xts.block2 = (block128_f) aesni_encrypt;
+
+        xctx->xts.key1 = &xctx->ks1;
+    }
+
+    if (iv) {
+        xctx->xts.key2 = &xctx->ks2;
+        memcpy(ctx->iv, iv, 16);
+    }
+
+    return 1;
+}
+
 # define aesni_xts_cipher aes_xts_cipher
 static int aesni_xts_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                             const unsigned char *in, size_t len);
