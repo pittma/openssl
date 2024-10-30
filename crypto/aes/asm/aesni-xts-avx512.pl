@@ -118,47 +118,92 @@ if ($avx512vaes) {
     vmovdqu  ($ptr_key2), $key2
     vpxor    $key2, $state_tweak, $state_tweak  # AddRoundKey(ARK) for tweak encryption
 
+    vmovdqu  ($ptr_key1), $key1
+    vmovdqa  $key1, 0x80($TW)    # store round keys in stack
+
     vmovdqu  0x10($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 1 for tweak encryption
+
+    vmovdqu  0x10($ptr_key1), $key1
+    vmovdqa  $key1, 0x90($TW)    # store round keys in stack
 
     vmovdqu  0x20($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 2 for tweak encryption
 
+    vmovdqu  0x20($ptr_key1), $key1
+    vmovdqa  $key1, 0xa0($TW)    # store round keys in stack
+
     vmovdqu  0x30($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 3 for tweak encryption
+
+    vmovdqu  0x30($ptr_key1), $key1
+    vmovdqa  $key1, 0xb0($TW)    # store round keys in stack
 
     vmovdqu  0x40($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 4 for tweak encryption
 
+    vmovdqu  0x40($ptr_key1), $key1
+    vmovdqa  $key1, 0xc0($TW)    # store round keys in stack
+
     vmovdqu  0x50($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 5 for tweak encryption
+
+    vmovdqu  0x50($ptr_key1), $key1
+    vmovdqa  $key1, 0xd0($TW)    # store round keys in stack
 
     vmovdqu  0x60($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 6 for tweak encryption
 
+    vmovdqu  0x60($ptr_key1), $key1
+    vmovdqa  $key1, 0xe0($TW)    # store round keys in stack
+  
     vmovdqu  0x70($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 7 for tweak encryption
+
+    vmovdqu  0x70($ptr_key1), $key1
+    vmovdqa  $key1, 0xf0($TW)    # store round keys in stack
 
     vmovdqu  0x80($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 8 for tweak encryption
 
+    vmovdqu  0x80($ptr_key1), $key1
+    vmovdqa  $key1, 0x100($TW)   # store round keys in stack
+
     vmovdqu  0x90($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 9 for tweak encryption
+
+    vmovdqu  0x90($ptr_key1), $key1
+    vmovdqa  $key1, 0x110($TW)   # store round keys in stack
 
     vmovdqu  0xa0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 10 for tweak encryption
 
+    vmovdqu  0xa0($ptr_key1), $key1
+    vmovdqa  $key1, 0x120($TW)   # store round keys in stack
+
     vmovdqu  0xb0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 11 for tweak encryption
+
+    vmovdqu  0xb0($ptr_key1), $key1
+    vmovdqa  $key1, 0x130($TW)   # store round keys in stack
 
     vmovdqu  0xc0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 12 for tweak encryption
 
+    vmovdqu  0xc0($ptr_key1), $key1
+    vmovdqa  $key1, 0x140($TW)   # store round keys in stack
+
     vmovdqu  0xd0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 13 for tweak encryption
 
+    vmovdqu  0xd0($ptr_key1), $key1
+    vmovdqa  $key1, 0x150($TW)   # store round keys in stack
+
     vmovdqu  0xe0($ptr_key2), $key2
     vaesenclast  $key2, $state_tweak, $state_tweak # round 14 for tweak encryption
+
+    vmovdqu  0xe0($ptr_key1), $key1
+    vmovdqa  $key1, 0x160($TW)
 
     vmovdqa  $state_tweak, ($TW)  # Store the encrypted Tweak value
 ___
@@ -245,7 +290,7 @@ ___
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
     }
-    $code .= "vmovdqu  ($key1), $t0\n";
+    $code .= "vmovdqu  0x80($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vpxor $t0, $st[$i], $st[$i]\n";
@@ -259,7 +304,7 @@ ___
 ___
     }
     # round 1
-    $code .= "vmovdqu 0x10($key1), $t0\n";
+    $code .= "vmovdqa 0x90($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -276,7 +321,7 @@ ___
     }
 
     # round 2
-    $code .= "vmovdqu 0x20($key1), $t0\n";
+    $code .= "vmovdqa 0xa0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -293,7 +338,7 @@ ___
     }
 
     # round 3
-    $code .= "vmovdqu 0x30($key1), $t0\n";
+    $code .= "vmovdqa 0xb0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -310,7 +355,7 @@ ___
     }
 
     # round 4
-    $code .= "vmovdqu 0x40($key1), $t0\n";
+    $code .= "vmovdqa 0xc0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -327,7 +372,7 @@ ___
     }
 
     # round 5
-    $code .= "vmovdqu 0x50($key1), $t0\n";
+    $code .= "vmovdqa 0xd0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -344,7 +389,7 @@ ___
     }
 
     # round 6
-    $code .= "vmovdqu 0x60($key1), $t0\n";
+    $code .= "vmovdqa 0xe0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -363,7 +408,7 @@ ___
     }
 
     # round 7
-    $code .= "vmovdqu 0x70($key1), $t0\n";
+    $code .= "vmovdqa 0xf0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -382,7 +427,7 @@ ___
     }
 
     # round 8
-    $code .= "vmovdqu 0x80($key1), $t0\n";
+    $code .= "vmovdqa 0x100($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -401,7 +446,7 @@ ___
     }
 
     # round 9
-    $code .= "vmovdqu 0x90($key1), $t0\n";
+    $code .= "vmovdqa 0x100($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
@@ -420,35 +465,35 @@ ___
     }
 
     # round 10
-    $code .= "vmovdqu 0xa0($key1), $t0\n";
+    $code .= "vmovdqa 0x120($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 11
-    $code .= "vmovdqu 0xb0($key1), $t0\n";
+    $code .= "vmovdqa 0x130($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= "vmovdqu 0xc0($key1), $t0\n";
+    $code .= "vmovdqa 0x140($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= "vmovdqu 0xd0($key1), $t0\n";
+    $code .= "vmovdqa 0x150($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= "vmovdqu 0xe0($key1), $t0\n";
+    $code .= "vmovdqa 0x160($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesenclast $t0, $st[$i], $st[$i]\n";
@@ -485,47 +530,92 @@ ___
     vmovdqu  ($ptr_key2), $key2
     vpxor    $key2, $state_tweak, $state_tweak  # ARK for tweak encryption
 
+    vmovdqu  0xe0($ptr_key1), $key1
+    vmovdqa  $key1, 0x160($TW)    # store round keys in stack
+
     vmovdqu  0x10($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 1 for tweak encryption
+
+    vmovdqu  0xd0($ptr_key1), $key1
+    vmovdqa  $key1, 0x150($TW)    # store round keys in stack
 
     vmovdqu  0x20($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 2 for tweak encryption
 
+    vmovdqu  0xc0($ptr_key1), $key1
+    vmovdqa  $key1, 0x140($TW)    # store round keys in stack
+
     vmovdqu  0x30($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 3 for tweak encryption
+
+    vmovdqu  0xb0($ptr_key1), $key1
+    vmovdqa  $key1, 0x130($TW)    # store round keys in stack
 
     vmovdqu  0x40($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 4 for tweak encryption
 
+    vmovdqu  0xa0($ptr_key1), $key1
+    vmovdqa  $key1, 0x120($TW)    # store round keys in stack
+
     vmovdqu  0x50($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 5 for tweak encryption
+
+    vmovdqu  0x90($ptr_key1), $key1
+    vmovdqa  $key1, 0x110($TW)    # store round keys in stack
 
     vmovdqu  0x60($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 6 for tweak encryption
 
+    vmovdqu  0x80($ptr_key1), $key1
+    vmovdqa  $key1, 0x100($TW)    # store round keys in stack
+
     vmovdqu  0x70($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 7 for tweak encryption
+
+    vmovdqu  0x70($ptr_key1), $key1
+    vmovdqa  $key1, 0xf0($TW)    # store round keys in stack
 
     vmovdqu  0x80($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 8 for tweak encryption
 
+    vmovdqu  0x60($ptr_key1), $key1
+    vmovdqa  $key1, 0xe0($TW)   # store round keys in stack
+
     vmovdqu  0x90($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 9 for tweak encryption
+
+    vmovdqu  0x50($ptr_key1), $key1
+    vmovdqa  $key1, 0xd0($TW)   # store round keys in stack
 
     vmovdqu  0xa0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 10 for tweak encryption
 
+    vmovdqu  0x40($ptr_key1), $key1
+    vmovdqa  $key1, 0xc0($TW)   # store round keys in stack
+
     vmovdqu  0xb0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 11 for tweak encryption
+
+    vmovdqu  0x30($ptr_key1), $key1
+    vmovdqa  $key1, 0xb0($TW)   # store round keys in stack
 
     vmovdqu  0xc0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 12 for tweak encryption
 
+    vmovdqu  0x20($ptr_key1), $key1
+    vmovdqa  $key1, 0xa0($TW)   # store round keys in stack
+
     vmovdqu  0xd0($ptr_key2), $key2
     vaesenc  $key2, $state_tweak, $state_tweak  # round 13 for tweak encryption
 
+    vmovdqu  0x10($ptr_key1), $key1
+    vmovdqa  $key1, 0x90($TW)   # store round keys in stack
+
     vmovdqu  0xe0($ptr_key2), $key2
     vaesenclast  $key2, $state_tweak, $state_tweak # round 14 for tweak encryption
+
+    vmovdqu  ($ptr_key1), $key1
+    vmovdqa  $key1, 0x80($TW)    # store round keys in stack
 
     vmovdqa  $state_tweak, ($TW)  # Store the encrypted Tweak value
 ___
@@ -565,7 +655,7 @@ ___
       $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
     }
 
-    $code .= "vmovdqu  ($key1), $t0\n";
+    $code .= "vmovdqa  0x80($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vpxor $t0, $st[$i], $st[$i]\n";
@@ -579,7 +669,7 @@ ___
 ___
     }
     # round 1
-    $code .= "vmovdqu 0x10($key1), $t0\n";
+    $code .= "vmovdqa 0x90($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -596,7 +686,7 @@ ___
     }
 
     # round 2
-    $code .= "vmovdqu 0x20($key1), $t0\n";
+    $code .= "vmovdqa 0xa0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -613,7 +703,7 @@ ___
     }
 
     # round 3
-    $code .= "vmovdqu 0x30($key1), $t0\n";
+    $code .= "vmovdqa 0xb0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -630,7 +720,7 @@ ___
     }
 
     # round 4
-    $code .= "vmovdqu 0x40($key1), $t0\n";
+    $code .= "vmovdqa 0xc0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -647,7 +737,7 @@ ___
     }
 
     # round 5
-    $code .= "vmovdqu 0x50($key1), $t0\n";
+    $code .= "vmovdqa 0xd0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -664,7 +754,7 @@ ___
     }
 
     # round 6
-    $code .= "vmovdqu 0x60($key1), $t0\n";
+    $code .= "vmovdqa 0xe0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -683,7 +773,7 @@ ___
     }
 
     # round 7
-    $code .= "vmovdqu 0x70($key1), $t0\n";
+    $code .= "vmovdqa 0xf0($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -702,7 +792,7 @@ ___
     }
 
     # round 8
-    $code .= "vmovdqu 0x80($key1), $t0\n";
+    $code .= "vmovdqa 0x100($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -721,7 +811,7 @@ ___
     }
 
     # round 9
-    $code .= "vmovdqu 0x90($key1), $t0\n";
+    $code .= "vmovdqa 0x110($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
@@ -740,35 +830,35 @@ ___
     }
 
     # round 10
-    $code .= "vmovdqu 0xa0($key1), $t0\n";
+    $code .= "vmovdqa 0x120($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 11
-    $code .= "vmovdqu 0xb0($key1), $t0\n";
+    $code .= "vmovdqa 0x130($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= "vmovdqu 0xc0($key1), $t0\n";
+    $code .= "vmovdqa 0x140($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= "vmovdqu 0xd0($key1), $t0\n";
+    $code .= "vmovdqa 0x150($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= "vmovdqu 0xe0($key1), $t0\n";
+    $code .= "vmovdqa 0x160($TW), $t0\n";
 
     for (my $i = 0; $i < $num_blocks; $i++) {
       $code .= "vaesdeclast $t0, $st[$i], $st[$i]\n";
@@ -809,7 +899,7 @@ ___
     vpxorq    $tw2, $st2, $st2
 
     # ARK
-    vbroadcasti32x4 ($key1), $t0
+    vbroadcasti32x4 0x80($TW), $t0
     vpxorq    $t0, $st1, $st1
     vpxorq    $t0, $st2, $st2
 ___
@@ -824,17 +914,17 @@ ___
     }
     # round 1
     $code .= <<___;
-    vbroadcasti32x4 0x10($key1), $t0
+    vbroadcasti32x4 0x90($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 2
-    vbroadcasti32x4 0x20($key1), $t0
+    vbroadcasti32x4 0xa0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 3
-    vbroadcasti32x4 0x30($key1), $t0
+    vbroadcasti32x4 0xb0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 ___
@@ -850,57 +940,57 @@ ___
 
     $code .= <<___;
     # round 4
-    vbroadcasti32x4 0x40($key1), $t0
+    vbroadcasti32x4 0xc0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 5
-    vbroadcasti32x4 0x50($key1), $t0
+    vbroadcasti32x4 0xd0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 6
-    vbroadcasti32x4 0x60($key1), $t0
+    vbroadcasti32x4 0xe0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 7
-    vbroadcasti32x4 0x70($key1), $t0
+    vbroadcasti32x4 0xf0($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 8
-    vbroadcasti32x4 0x80($key1), $t0
+    vbroadcasti32x4 0x100($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 9
-    vbroadcasti32x4 0x90($key1), $t0
+    vbroadcasti32x4 0x110($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 10
-    vbroadcasti32x4 0xa0($key1), $t0
+    vbroadcasti32x4 0x120($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 11
-    vbroadcasti32x4 0xb0($key1), $t0
+    vbroadcasti32x4 0x130($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 12
-    vbroadcasti32x4 0xc0($key1), $t0
+    vbroadcasti32x4 0x140($key1), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 13
-    vbroadcasti32x4 0xd0($key1), $t0
+    vbroadcasti32x4 0x150($TW), $t0
     vaesenc  $t0, $st1, $st1
     vaesenc  $t0, $st2, $st2
 
     # round 14
-    vbroadcasti32x4 0xe0($key1), $t0
+    vbroadcasti32x4 0x160($TW), $t0
     vaesenclast  $t0, $st1, $st1
     vaesenclast  $t0, $st2, $st2
 
@@ -930,7 +1020,7 @@ ___
     vpxorq    $tw2, $st2, $st2
 
     # ARK
-    vbroadcasti32x4 ($key1), $t0
+    vbroadcasti32x4 0x80($TW), $t0
     vpxorq    $t0, $st1, $st1
     vpxorq    $t0, $st2, $st2
 ___
@@ -945,17 +1035,17 @@ ___
     }
     # round 1
     $code .= <<___;
-    vbroadcasti32x4 0x10($key1), $t0
+    vbroadcasti32x4 0x90($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 2
-    vbroadcasti32x4 0x20($key1), $t0
+    vbroadcasti32x4 0xa0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 3
-    vbroadcasti32x4 0x30($key1), $t0
+    vbroadcasti32x4 0xb0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 ___
@@ -971,57 +1061,57 @@ ___
 
     $code .= <<___;
     # round 4
-    vbroadcasti32x4 0x40($key1), $t0
+    vbroadcasti32x4 0xc0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 5
-    vbroadcasti32x4 0x50($key1), $t0
+    vbroadcasti32x4 0xd0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 6
-    vbroadcasti32x4 0x60($key1), $t0
+    vbroadcasti32x4 0xe0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 7
-    vbroadcasti32x4 0x70($key1), $t0
+    vbroadcasti32x4 0xf0($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 8
-    vbroadcasti32x4 0x80($key1), $t0
+    vbroadcasti32x4 0x100($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 9
-    vbroadcasti32x4 0x90($key1), $t0
+    vbroadcasti32x4 0x110($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 10
-    vbroadcasti32x4 0xa0($key1), $t0
+    vbroadcasti32x4 0x120($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 11
-    vbroadcasti32x4 0xb0($key1), $t0
+    vbroadcasti32x4 0x130($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 12
-    vbroadcasti32x4 0xc0($key1), $t0
+    vbroadcasti32x4 0x140($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 13
-    vbroadcasti32x4 0xd0($key1), $t0
+    vbroadcasti32x4 0x150($TW), $t0
     vaesdec  $t0, $st1, $st1
     vaesdec  $t0, $st2, $st2
 
     # round 14
-    vbroadcasti32x4 0xe0($key1), $t0
+    vbroadcasti32x4 0x160($TW), $t0
     vaesdeclast  $t0, $st1, $st1
     vaesdeclast  $t0, $st2, $st2
 
@@ -1059,7 +1149,7 @@ ___
     }
 
     # ARK
-    $code .= "vbroadcasti32x4 ($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x80($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vpxorq $t0, $st[$i], $st[$i]\n";
     }
@@ -1074,19 +1164,19 @@ ___
     }
 
     # round 1
-    $code .= "vbroadcasti32x4 0x10($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x90($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 2
-    $code .= "vbroadcasti32x4 0x20($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xa0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 3
-    $code .= "vbroadcasti32x4 0x30($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xb0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
@@ -1100,19 +1190,19 @@ ___
 ___
     }
     # round 4
-    $code .= "vbroadcasti32x4 0x40($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xc0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 5
-    $code .= "vbroadcasti32x4 0x50($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xd0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 6
-    $code .= "vbroadcasti32x4 0x60($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xe0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
@@ -1126,19 +1216,19 @@ ___
 ___
     }
     # round 7
-    $code .= "vbroadcasti32x4 0x70($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xf0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 8
-    $code .= "vbroadcasti32x4 0x80($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x100($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 9
-    $code .= "vbroadcasti32x4 0x90($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x110($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
@@ -1152,35 +1242,34 @@ ___
 ___
     }
     # round 10
-    $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x120($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 11
-    $code .= "vbroadcasti32x4 0xb0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x130($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= "vbroadcasti32x4 0xc0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x140($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= "vbroadcasti32x4 0xd0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x150($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= "vbroadcasti32x4 0xe0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x160($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesenclast $t0, $st[$i], $st[$i]\n";
     }
-
 
     # xor Tweak values
     for (my $i = 0; $i < 4; $i++) {
@@ -1220,7 +1309,7 @@ ___
     }
 
     # ARK
-    $code .= "vbroadcasti32x4 ($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x80($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vpxorq $t0, $st[$i], $st[$i]\n";
     }
@@ -1235,19 +1324,19 @@ ___
     }
 
     # round 1
-    $code .= "vbroadcasti32x4 0x10($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x90($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 2
-    $code .= "vbroadcasti32x4 0x20($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xa0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 3
-    $code .= "vbroadcasti32x4 0x30($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xb0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
@@ -1261,19 +1350,19 @@ ___
 ___
     }
     # round 4
-    $code .= "vbroadcasti32x4 0x40($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xc0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 5
-    $code .= "vbroadcasti32x4 0x50($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xd0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 6
-    $code .= "vbroadcasti32x4 0x60($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xe0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
@@ -1287,19 +1376,19 @@ ___
 ___
     }
     # round 7
-    $code .= "vbroadcasti32x4 0x70($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0xf0($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 8
-    $code .= "vbroadcasti32x4 0x80($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x100($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 9
-    $code .= "vbroadcasti32x4 0x90($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x110($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
@@ -1313,31 +1402,31 @@ ___
 ___
     }
     # round 10
-    $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x120($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 11
-    $code .= "vbroadcasti32x4 0xb0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x130($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= "vbroadcasti32x4 0xc0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x140($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= "vbroadcasti32x4 0xd0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x150($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= "vbroadcasti32x4 0xe0($key1), $t0\n";
+    $code .= "vbroadcasti32x4 0x160($TW), $t0\n";
     for (my $i = 0; $i < 4; $i++) {
       $code .= "vaesdeclast $t0, $st[$i], $st[$i]\n";
     }
@@ -1721,21 +1810,21 @@ ___
   vpshufb 	 %xmm10,%xmm3,%xmm3
   vpblendvb 	 %xmm10,%xmm2,%xmm3,%xmm3
   vpxor 	 %xmm0,%xmm3,%xmm8
-  vpxor 	 ($key1),%xmm8,%xmm8
-  vaesenc 	 0x10($key1),%xmm8,%xmm8
-  vaesenc 	 0x20($key1),%xmm8,%xmm8
-  vaesenc 	 0x30($key1),%xmm8,%xmm8
-  vaesenc 	 0x40($key1),%xmm8,%xmm8
-  vaesenc 	 0x50($key1),%xmm8,%xmm8
-  vaesenc 	 0x60($key1),%xmm8,%xmm8
-  vaesenc 	 0x70($key1),%xmm8,%xmm8
-  vaesenc 	 0x80($key1),%xmm8,%xmm8
-  vaesenc 	 0x90($key1),%xmm8,%xmm8
-  vaesenc 	 0xa0($key1),%xmm8,%xmm8
-  vaesenc 	 0xb0($key1),%xmm8,%xmm8
-  vaesenc 	 0xc0($key1),%xmm8,%xmm8
-  vaesenc 	 0xd0($key1),%xmm8,%xmm8
-  vaesenclast 	 0xe0($key1),%xmm8,%xmm8
+  vpxor 	 0x80($TW),%xmm8,%xmm8
+  vaesenc 	 0x90($TW),%xmm8,%xmm8
+  vaesenc 	 0xa0($TW),%xmm8,%xmm8
+  vaesenc 	 0xb0($TW),%xmm8,%xmm8
+  vaesenc 	 0xc0($TW),%xmm8,%xmm8
+  vaesenc 	 0xd0($TW),%xmm8,%xmm8
+  vaesenc 	 0xe0($TW),%xmm8,%xmm8
+  vaesenc 	 0xf0($TW),%xmm8,%xmm8
+  vaesenc 	 0x100($TW),%xmm8,%xmm8
+  vaesenc 	 0x110($TW),%xmm8,%xmm8
+  vaesenc 	 0x120($TW),%xmm8,%xmm8
+  vaesenc 	 0x130($TW),%xmm8,%xmm8
+  vaesenc 	 0x140($TW),%xmm8,%xmm8
+  vaesenc 	 0x150($TW),%xmm8,%xmm8
+  vaesenclast 	 0x160($TW),%xmm8,%xmm8
   vpxor 	 %xmm0,%xmm8,%xmm8
   vmovdqu 	 %xmm8,-0x10($output)
 ___
@@ -2491,21 +2580,21 @@ ___
   vpxor 	 %xmm0,%xmm3,%xmm8
 
   # decrypt last block with cipher stealing
-  vpxor 	 ($key1),%xmm8,%xmm8
-  vaesdec 	 0x10($key1),%xmm8,%xmm8
-  vaesdec 	 0x20($key1),%xmm8,%xmm8
-  vaesdec 	 0x30($key1),%xmm8,%xmm8
-  vaesdec 	 0x40($key1),%xmm8,%xmm8
-  vaesdec 	 0x50($key1),%xmm8,%xmm8
-  vaesdec 	 0x60($key1),%xmm8,%xmm8
-  vaesdec 	 0x70($key1),%xmm8,%xmm8
-  vaesdec 	 0x80($key1),%xmm8,%xmm8
-  vaesdec 	 0x90($key1),%xmm8,%xmm8
-  vaesdec 	 0xa0($key1),%xmm8,%xmm8
-  vaesdec 	 0xb0($key1),%xmm8,%xmm8
-  vaesdec 	 0xc0($key1),%xmm8,%xmm8
-  vaesdec 	 0xd0($key1),%xmm8,%xmm8
-  vaesdeclast 	 0xe0($key1),%xmm8,%xmm8
+  vpxor 	 0x80($TW),%xmm8,%xmm8
+  vaesdec 	 0x90($TW),%xmm8,%xmm8
+  vaesdec 	 0xa0($TW),%xmm8,%xmm8
+  vaesdec 	 0xb0($TW),%xmm8,%xmm8
+  vaesdec 	 0xc0($TW),%xmm8,%xmm8
+  vaesdec 	 0xd0($TW),%xmm8,%xmm8
+  vaesdec 	 0xe0($TW),%xmm8,%xmm8
+  vaesdec 	 0xf0($TW),%xmm8,%xmm8
+  vaesdec 	 0x100($TW),%xmm8,%xmm8
+  vaesdec 	 0x110($TW),%xmm8,%xmm8
+  vaesdec 	 0x120($TW),%xmm8,%xmm8
+  vaesdec 	 0x130($TW),%xmm8,%xmm8
+  vaesdec 	 0x140($TW),%xmm8,%xmm8
+  vaesdec 	 0x150($TW),%xmm8,%xmm8
+  vaesdeclast 	 0x160($TW),%xmm8,%xmm8
 
   # xor Tweak value
   vpxor 	 %xmm0,%xmm8,%xmm8
@@ -3029,6 +3118,125 @@ ___
     ret
 ___
 }
+
+# Bits 7 & 4 contain the src1 register's MSB in inverted form
+# Bits 6 & 5 contian the dst register's MSB in inverted form
+# Bits 1 & 0 is fixed to 10 for vaesenc* instrcutions and 11
+# for vpclmulqdq instruction
+sub evex_byte1 {
+  my ($mm, $src1, $dst) = @_;
+  # set default to zero
+  $src1 = 0 if (!defined($src1));
+  $dst = 0 if (!defined($dst));
+
+  my $byte = 0xf0 | $mm;
+
+  if (($src1 & 0x8) > 0) {
+      $byte = $byte & 0x7f;
+  }
+  if (($src1 & 0x10) > 0) {
+      $byte = $byte & 0xef;
+  }
+
+  if (($dst & 0x8) > 0) {
+      $byte = $byte & 0xdf;
+  }
+  if (($dst & 0x10) > 0) {
+      $byte = $byte & 0xbf;
+  }
+  return $byte;
+}
+
+# Bits 6->3 contians the lower 4 bits of src2 register in inverted form
+# Bits 0->2 is fixed to 101
+sub evex_byte2 {
+  my $src2 = shift;
+  $src2 = ($src2 & 0x0f) ^ 0x0f;
+  return (($src2 << 3) | 0x05);
+}
+
+# Bits 6 & 5 tells about the operand register types and bit 3 contains
+# the src2 register's MSB in inverted form
+sub evex_byte3 {
+  my ($type, $src2) = @_;
+  my $byte = 0x0; # default for xmm registers
+  if ($type eq 'y') {
+	$byte = 0x01;
+  } elsif ($type eq 'z') {
+	$byte = 0x02;
+  }
+
+  $byte = $byte << 5;
+
+  if (!($src2 & 0x10)) {
+      $byte = $byte | 0x08;
+  }
+  return $byte;
+}
+
+sub vpclmulqdq {
+  my $line = shift;
+  my @opcode = (0x62);
+  my $inst_type = 0x03; #vpclmulqdq
+  my %opcodelet = (
+     "vpclmulqdq" => 0x44,
+  );
+  if ($line=~/(vpclmul[a-z]+)\s+\$0x([0-9]+),\s*%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+),\s*%[xyz]mm([0-9]+)/) {
+        return undef if (!defined($opcodelet{$1}));
+        my $byte1 = evex_byte1($inst_type, $6, $4);
+        my $byte2 = evex_byte2($5);
+        my $byte3 = evex_byte3($3, $5);
+        my $modrm = 0xc0 | (($4 & 7) | (($6 & 7) << 3));
+	push @opcode,$byte1,$byte2,$byte3;
+	push @opcode,($opcodelet{$1});
+	push @opcode,$modrm;
+	push @opcode,hex($2);
+        return ".byte\t".join(',',@opcode);
+  }
+  return $line;
+}
+
+sub vaesni {
+  my $line = shift;
+  my @opcode = (0x62);
+  my $inst_type = 0x02; # vaesenc
+  my $byte1, $byte2, $byte3;
+  my %opcodelet = (
+     "vaesenc" => 0xdc, "vaesdec" => 0xde,
+     "vaesenclast" => 0xdd, "vaesdeclast" => 0xdf,
+  );
+  if ($line=~/(vaes[a-z]+)\s+%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+),\s*%[xyz]mm([0-9]*)/) {
+        return undef if (!defined($opcodelet{$1}));
+        $byte1 = evex_byte1($inst_type, $5, $3);
+        $byte2 = evex_byte2($4);
+        $byte3 = evex_byte3($2, $4);
+        my $modrm = 0xc0 | ((($5 & 7) << 3) | ($3 & 7));
+	push @opcode,$byte1,$byte2,$byte3;
+	push @opcode,($opcodelet{$1});
+	push @opcode,$modrm;
+        return ".byte\t".join(',',@opcode);
+  } elsif ($line=~/(vaes[a-z]+)\s+0x([a-f,0-9]+)\(%rsp\),\s*%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+)/) {
+        return undef if (!defined($opcodelet{$1}));
+        $byte1 = evex_byte1($inst_type,$5);
+        $byte2 = evex_byte2($5);
+        $byte3 = evex_byte3($3, $5);
+        push @opcode,$byte1,$byte2,$byte3;
+        push @opcode,($opcodelet{$1});
+        my $rsp = 0x04;
+        my $modrm = 0x80 | ((($5 & 7) << 3) | $rsp);
+        push @opcode,$modrm;
+        push @opcode,0x24;
+        push @opcode, (hex($2) & 0xFF), ((hex($2) >> 8) & 0xFF);
+        push @opcode, ((hex($2) >> 16) & 0xFF), ((hex($2) >> 24) & 0xFF);
+        return ".byte\t".join(',',@opcode);
+  }
+  return $line;
+}
+
+$code =~ s/\`([^\`]*)\`/eval($1)/gem;
+$code =~ s/\b(vpclmul.*).*$/vpclmulqdq($1)/gem;
+$code =~ s/\b(vaesenc.*).*$/vaesni($1)/gem;
+$code =~ s/\b(vaesdec.*).*$/vaesni($1)/gem;
 
 print $code;
 
