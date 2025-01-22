@@ -740,20 +740,20 @@ ___
     my $tw1 = $_[1]; # tweak 1
     my $tmp = $_[2];
 
-	$code .= "vbroadcasti32x4 ($key1), $tmp\n";
+    $code .= "vbroadcasti32x4 ($key1), $tmp\n";
     $code .= "vpternlogq      \$0x96, $tmp, $tw1, $st1\n";
 
-	# rounds 1-9
-	for (my $i = 1; $i < 10; $i++) {
-	  $code .= "vbroadcasti32x4 16*$i($key1), $tmp\n";
-	  $code .= "vaesenc  $tmp, $st1, $st1\n";
-	}
+    # rounds 1-9
+    for (my $i = 1; $i < 10; $i++) {
+      $code .= "vbroadcasti32x4 16*$i($key1), $tmp\n";
+      $code .= "vaesenc  $tmp, $st1, $st1\n";
+    }
 
-	# round 10
-	$code .= "vbroadcasti32x4 16*10($key1), $tmp\n";
-	$code .= "vaesenclast  $tmp, $st1, $st1\n";
+    # round 10
+    $code .= "vbroadcasti32x4 16*10($key1), $tmp\n";
+    $code .= "vaesenclast  $tmp, $st1, $st1\n";
 
-	$code .= "vpxorq $tw1, $st1, $st1\n";
+    $code .= "vpxorq $tw1, $st1, $st1\n";
   }
 
   # Encrypt 8 blocks in parallel
@@ -1266,666 +1266,670 @@ ___
 ___
   }
 
-  {
-  $code.=<<___;
-  .globl	aesni_xts_128_encrypt_avx512
-  .hidden	aesni_xts_128_encrypt_avx512
-  .type	aesni_xts_128_encrypt_avx512,\@abi-omnipotent
-  .align	32
-  aesni_xts_128_encrypt_avx512:
-  .cfi_startproc
-  endbranch
+  sub encrypt {
+    my $is_256 = $_[0];
+
+    {
+    $code.=<<___;
+    .globl	aesni_xts_128_encrypt_avx512
+    .hidden	aesni_xts_128_encrypt_avx512
+    .type	aesni_xts_128_encrypt_avx512,\@abi-omnipotent
+    .align	32
+    aesni_xts_128_encrypt_avx512:
+    .cfi_startproc
+    endbranch
 ___
-  }
-  $code .= "push 	 %rbp\n";
-  $code .= "mov 	 $TW,%rbp\n";
-  $code .= "sub 	 \$$VARIABLE_OFFSET,$TW\n";
-  $code .= "and 	 \$0xffffffffffffffc0,$TW\n";
-  $code .= "mov 	 %rbx,$GP_STORAGE($TW)\n";
+    }
+    $code .= "push 	 %rbp\n";
+    $code .= "mov 	 $TW,%rbp\n";
+    $code .= "sub 	 \$$VARIABLE_OFFSET,$TW\n";
+    $code .= "and 	 \$0xffffffffffffffc0,$TW\n";
+    $code .= "mov 	 %rbx,$GP_STORAGE($TW)\n";
 
-  if ($win64) {
-    $code .= "mov 	 %rdi,$GP_STORAGE + 8*1($TW)\n";
-    $code .= "mov 	 %rsi,$GP_STORAGE + 8*2($TW)\n";
-    $code .= "vmovdqa      %xmm6, $XMM_STORAGE + 16*0($TW)\n";
-    $code .= "vmovdqa      %xmm7, $XMM_STORAGE + 16*1($TW)\n";
-    $code .= "vmovdqa      %xmm8, $XMM_STORAGE + 16*2($TW)\n";
-    $code .= "vmovdqa      %xmm9, $XMM_STORAGE + 16*3($TW)\n";
-    $code .= "vmovdqa      %xmm10, $XMM_STORAGE + 16*4($TW)\n";
-    $code .= "vmovdqa      %xmm11, $XMM_STORAGE + 16*5($TW)\n";
-    $code .= "vmovdqa      %xmm12, $XMM_STORAGE + 16*6($TW)\n";
-    $code .= "vmovdqa      %xmm13, $XMM_STORAGE + 16*7($TW)\n";
-    $code .= "vmovdqa      %xmm14, $XMM_STORAGE + 16*8($TW)\n";
-    $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
-  }
+    if ($win64) {
+      $code .= "mov 	 %rdi,$GP_STORAGE + 8*1($TW)\n";
+      $code .= "mov 	 %rsi,$GP_STORAGE + 8*2($TW)\n";
+      $code .= "vmovdqa      %xmm6, $XMM_STORAGE + 16*0($TW)\n";
+      $code .= "vmovdqa      %xmm7, $XMM_STORAGE + 16*1($TW)\n";
+      $code .= "vmovdqa      %xmm8, $XMM_STORAGE + 16*2($TW)\n";
+      $code .= "vmovdqa      %xmm9, $XMM_STORAGE + 16*3($TW)\n";
+      $code .= "vmovdqa      %xmm10, $XMM_STORAGE + 16*4($TW)\n";
+      $code .= "vmovdqa      %xmm11, $XMM_STORAGE + 16*5($TW)\n";
+      $code .= "vmovdqa      %xmm12, $XMM_STORAGE + 16*6($TW)\n";
+      $code .= "vmovdqa      %xmm13, $XMM_STORAGE + 16*7($TW)\n";
+      $code .= "vmovdqa      %xmm14, $XMM_STORAGE + 16*8($TW)\n";
+      $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
+    }
 
-  $code .= "mov 	 \$0x87, $gf_poly_8b\n";
-  $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
-  $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n";   # for key expansion
+    $code .= "mov 	 \$0x87, $gf_poly_8b\n";
+    $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
+    $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n";   # for key expansion
 
-  encrypt_tweak_for_encryption("%xmm0", "%xmm1", "%xmm2", "%xmm3",
-                               $key2, $key1);
+    encrypt_tweak_for_encryption("%xmm0", "%xmm1", "%xmm2", "%xmm3",
+                                 $key2, $key1);
 
-  if ($win64) {
-    $code .= "mov	 $input, 8 + 8*5(%rbp)\n";  # ciphertext pointer
-    $code .= "mov        $output, 8 + 8*6(%rbp)\n"; # plaintext pointer
-  }
+    if ($win64) {
+      $code .= "mov	 $input, 8 + 8*5(%rbp)\n";  # ciphertext pointer
+      $code .= "mov        $output, 8 + 8*6(%rbp)\n"; # plaintext pointer
+    }
 
-  {
-  $code.=<<___;
+    {
+    $code.=<<___;
 
-  cmp 	 \$0x80,$length
-  jl 	 .L_less_than_128_bytes_${rndsuffix}
-  vpbroadcastq 	 $gf_poly_8b,$ZPOLY
-  cmp 	 \$0x100,$length
-  jge 	 .L_start_by16_${rndsuffix}
-  cmp 	 \$0x80,$length
-  jge 	 .L_start_by8_${rndsuffix}
+    cmp 	 \$0x80,$length
+    jl 	 .L_less_than_128_bytes_${rndsuffix}
+    vpbroadcastq 	 $gf_poly_8b,$ZPOLY
+    cmp 	 \$0x100,$length
+    jge 	 .L_start_by16_${rndsuffix}
+    cmp 	 \$0x80,$length
+    jge 	 .L_start_by8_${rndsuffix}
 
-  .L_do_n_blocks_${rndsuffix}:
-  cmp 	 \$0x0,$length
-  je 	 .L_ret_${rndsuffix}
-  cmp 	 \$0x70,$length
-  jge 	 .L_remaining_num_blocks_is_7_${rndsuffix}
-  cmp 	 \$0x60,$length
-  jge 	 .L_remaining_num_blocks_is_6_${rndsuffix}
-  cmp 	 \$0x50,$length
-  jge 	 .L_remaining_num_blocks_is_5_${rndsuffix}
-  cmp 	 \$0x40,$length
-  jge 	 .L_remaining_num_blocks_is_4_${rndsuffix}
-  cmp 	 \$0x30,$length
-  jge 	 .L_remaining_num_blocks_is_3_${rndsuffix}
-  cmp 	 \$0x20,$length
-  jge 	 .L_remaining_num_blocks_is_2_${rndsuffix}
-  cmp 	 \$0x10,$length
-  jge 	 .L_remaining_num_blocks_is_1_${rndsuffix}
-  vmovdqa 	 %xmm0,%xmm8
-  vmovdqa 	 %xmm9,%xmm0
-  jmp 	 .L_steal_cipher_${rndsuffix}
+    .L_do_n_blocks_${rndsuffix}:
+    cmp 	 \$0x0,$length
+    je 	 .L_ret_${rndsuffix}
+    cmp 	 \$0x70,$length
+    jge 	 .L_remaining_num_blocks_is_7_${rndsuffix}
+    cmp 	 \$0x60,$length
+    jge 	 .L_remaining_num_blocks_is_6_${rndsuffix}
+    cmp 	 \$0x50,$length
+    jge 	 .L_remaining_num_blocks_is_5_${rndsuffix}
+    cmp 	 \$0x40,$length
+    jge 	 .L_remaining_num_blocks_is_4_${rndsuffix}
+    cmp 	 \$0x30,$length
+    jge 	 .L_remaining_num_blocks_is_3_${rndsuffix}
+    cmp 	 \$0x20,$length
+    jge 	 .L_remaining_num_blocks_is_2_${rndsuffix}
+    cmp 	 \$0x10,$length
+    jge 	 .L_remaining_num_blocks_is_1_${rndsuffix}
+    vmovdqa 	 %xmm0,%xmm8
+    vmovdqa 	 %xmm9,%xmm0
+    jmp 	 .L_steal_cipher_${rndsuffix}
 
-  .L_remaining_num_blocks_is_7_${rndsuffix}:
-  mov 	 \$0x0000ffffffffffff,$tmp1
-  kmovq 	 $tmp1,%k1
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2{%k1}
-  add 	 \$0x70,$input
+    .L_remaining_num_blocks_is_7_${rndsuffix}:
+    mov 	 \$0x0000ffffffffffff,$tmp1
+    kmovq 	 $tmp1,%k1
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2{%k1}
+    add 	 \$0x70,$input
 ___
-  }
+    }
 
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
 
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %zmm2,0x40($output){%k1}
-  add 	 \$0x70,$output
-  vextracti32x4 	 \$0x2,%zmm2,%xmm8
-  vextracti32x4 	 \$0x3,%zmm10,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-
-  .L_remaining_num_blocks_is_6_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%ymm2
-  add 	 \$0x60,$input
-___
-  }
-
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %ymm2,0x40($output)
-  add 	 \$0x60,$output
-  vextracti32x4 	 \$0x1,%zmm2,%xmm8
-  vextracti32x4 	 \$0x2,%zmm10,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-
-  .L_remaining_num_blocks_is_5_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu 	 0x40($input),%xmm2
-  add 	 \$0x50,$input
-___
-  }
-
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu 	 %xmm2,0x40($output)
-  add 	 \$0x50,$output
-  movdqa 	 %xmm2,%xmm8
-  vextracti32x4 	 \$0x1,%zmm10,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-
-  .L_remaining_num_blocks_is_4_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  add 	 \$0x40,$input
-___
-  }
-
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  add 	 \$0x40,$output
-  vextracti32x4 	 \$0x3,%zmm1,%xmm8
-  vextracti32x4 	 \$0x0,%zmm10,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  {
-  $code .= <<___;
-  .L_remaining_num_blocks_is_3_${rndsuffix}:
-  vextracti32x4 	 \$0x1,%zmm9,%xmm10
-  vextracti32x4 	 \$0x2,%zmm9,%xmm11
-  vmovdqu 	 ($input),%xmm1
-  vmovdqu 	 0x10($input),%xmm2
-  vmovdqu 	 0x20($input),%xmm3
-  add 	 \$0x30,$input
-___
-  }
-
-  encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  add 	 \$0x30,$output
-  vmovdqa 	 %xmm3,%xmm8
-  vextracti32x4 	 \$0x3,%zmm9,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  {
-  $code .= <<___;
-  .L_remaining_num_blocks_is_2_${rndsuffix}:
-  vextracti32x4 	 \$0x1,%zmm9,%xmm10
-  vmovdqu 	 ($input),%xmm1
-  vmovdqu 	 0x10($input),%xmm2
-  add 	 \$0x20,$input
-___
-  }
-
-  encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  add 	 \$0x20,$output
-  vmovdqa 	 %xmm2,%xmm8
-  vextracti32x4 	 \$0x2,%zmm9,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  {
-  $code .= <<___;
-  .L_remaining_num_blocks_is_1_${rndsuffix}:
-  vmovdqu 	 ($input),%xmm1
-  add 	 \$0x10,$input
-___
-  }
-
-  encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  add 	 \$0x10,$output
-  vmovdqa 	 %xmm1,%xmm8
-  vextracti32x4 	 \$0x1,%zmm9,%xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-
-
-  .L_start_by16_${rndsuffix}:
-  vbroadcasti32x4 	 ($TW),%zmm0
-  vbroadcasti32x4 shufb_15_7(%rip),%zmm8
-  mov 	 \$0xaa,$tmp1
-  kmovq 	 $tmp1,%k2
-  vpshufb 	 %zmm8,%zmm0,%zmm1
-  vpsllvq const_dq3210(%rip),%zmm0,%zmm4
-  vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
-  vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
-  vpxord 	 %zmm4,%zmm3,%zmm9
-  vpsllvq const_dq7654(%rip),%zmm0,%zmm5
-  vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
-  vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
-  vpxord 	 %zmm5,%zmm7,%zmm10
-  vpsrldq 	 \$0xf,%zmm9,%zmm13
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm13,%zmm14
-  vpslldq 	 \$0x1,%zmm9,%zmm11
-  vpxord 	 %zmm14,%zmm11,%zmm11
-  vpsrldq 	 \$0xf,%zmm10,%zmm15
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm15,%zmm16
-  vpslldq 	 \$0x1,%zmm10,%zmm12
-  vpxord 	 %zmm16,%zmm12,%zmm12
-
-  .L_main_loop_run_16_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2
-  vmovdqu8 	 0x80($input),%zmm3
-  vmovdqu8 	 0xc0($input),%zmm4
-  add 	 \$0x100,$input
-___
-  }
-
-  encrypt_by_16_zmm("%zmm1", "%zmm2", "%zmm3", "%zmm4", "%zmm9",
-                    "%zmm10", "%zmm11", "%zmm12", "%zmm0", 0);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %zmm2,0x40($output)
-  vmovdqu8 	 %zmm3,0x80($output)
-  vmovdqu8 	 %zmm4,0xc0($output)
-  add 	 \$0x100,$output
-  sub 	 \$0x100,$length
-  cmp 	 \$0x100,$length
-  jge 	 .L_main_loop_run_16_${rndsuffix}
-  cmp 	 \$0x80,$length
-  jge 	 .L_main_loop_run_8_${rndsuffix}
-  vextracti32x4 	 \$0x3,%zmm4,%xmm0
-  jmp 	 .L_do_n_blocks_${rndsuffix}
-
-  .L_start_by8_${rndsuffix}:
-  vbroadcasti32x4 	 ($TW),%zmm0
-  vbroadcasti32x4 shufb_15_7(%rip),%zmm8
-  mov 	 \$0xaa,$tmp1
-  kmovq 	 $tmp1,%k2
-  vpshufb 	 %zmm8,%zmm0,%zmm1
-  vpsllvq const_dq3210(%rip),%zmm0,%zmm4
-  vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
-  vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
-  vpxord 	 %zmm4,%zmm3,%zmm9
-  vpsllvq const_dq7654(%rip),%zmm0,%zmm5
-  vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
-  vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
-  vpxord 	 %zmm5,%zmm7,%zmm10
-
-  .L_main_loop_run_8_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2
-  add 	 \$0x80,$input
-___
-  }
-
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 0);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %zmm2,0x40($output)
-  add 	 \$0x80,$output
-  sub 	 \$0x80,$length
-  cmp 	 \$0x80,$length
-  jge 	 .L_main_loop_run_8_${rndsuffix}
-  vextracti32x4 	 \$0x3,%zmm2,%xmm0
-  jmp 	 .L_do_n_blocks_${rndsuffix}
-
-  .L_steal_cipher_${rndsuffix}:
-  vmovdqa 	 %xmm8,%xmm2
-  lea vpshufb_shf_table(%rip),$TEMPLOW
-  vmovdqu 	 ($TEMPLOW,$length,1),%xmm10
-  vpshufb 	 %xmm10,%xmm8,%xmm8
-  vmovdqu 	 -0x10($input,$length,1),%xmm3
-  vmovdqu 	 %xmm8,-0x10($output,$length,1)
-  lea vpshufb_shf_table(%rip),$TEMPLOW
-  add \$16, $TEMPLOW
-  sub 	 $length,$TEMPLOW
-  vmovdqu 	 ($TEMPLOW),%xmm10
-  vpxor mask1(%rip),%xmm10,%xmm10
-  vpshufb 	 %xmm10,%xmm3,%xmm3
-  vpblendvb 	 %xmm10,%xmm2,%xmm3,%xmm3
-  vpxor 	 %xmm0,%xmm3,%xmm8
-  vpxor 	 ($key1),%xmm8,%xmm8
-  vaesenc 	 0x10($key1),%xmm8,%xmm8
-  vaesenc 	 0x20($key1),%xmm8,%xmm8
-  vaesenc 	 0x30($key1),%xmm8,%xmm8
-  vaesenc 	 0x40($key1),%xmm8,%xmm8
-  vaesenc 	 0x50($key1),%xmm8,%xmm8
-  vaesenc 	 0x60($key1),%xmm8,%xmm8
-  vaesenc 	 0x70($key1),%xmm8,%xmm8
-  vaesenc 	 0x80($key1),%xmm8,%xmm8
-  vaesenc 	 0x90($key1),%xmm8,%xmm8
-  vaesenclast 	 0xa0($key1),%xmm8,%xmm8
-  vpxor 	 %xmm0,%xmm8,%xmm8
-  vmovdqu 	 %xmm8,-0x10($output)
-___
-  }
-
-  {
-  $code .= <<___;
-  .L_ret_${rndsuffix}:
-  mov 	 $GP_STORAGE($TW),%rbx
-  xor    $tmp1,$tmp1
-  mov    $tmp1,$GP_STORAGE($TW)
-  # Zero-out the whole of `%zmm0`.
-  vpxorq %zmm0,%zmm0,%zmm0
-___
-  }
-
-  if ($win64) {
+    {
     $code .= <<___;
-    mov $GP_STORAGE + 8*1($TW),%rdi
-    mov $tmp1,$GP_STORAGE + 8*1($TW)
-    mov $GP_STORAGE + 8*2($TW),%rsi
-    mov $tmp1,$GP_STORAGE + 8*2($TW)
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %zmm2,0x40($output){%k1}
+    add 	 \$0x70,$output
+    vextracti32x4 	 \$0x2,%zmm2,%xmm8
+    vextracti32x4 	 \$0x3,%zmm10,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
 
-    vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
-    vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
-    vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
-    vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
-
-    # Zero the 64 bytes we just restored to the xmm registers.
-    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
-
-    vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
-    vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
-    vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
-    vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
-
-    # And again.
-    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
-
-    vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
-    vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
-
-    # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
-    # source operand.
-    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+    .L_remaining_num_blocks_is_6_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%ymm2
+    add 	 \$0x60,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  mov %rbp,$TW
-  pop %rbp
-  vzeroupper
-  ret
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
 
-  .L_less_than_128_bytes_${rndsuffix}:
-  vpbroadcastq $gf_poly_8b, $ZPOLY
-  cmp 	 \$0x10,$length
-  jb 	 .L_ret_${rndsuffix}
-  vbroadcasti32x4 ($TW), %zmm0
-  vbroadcasti32x4 shufb_15_7(%rip), %zmm8
-  movl    \$0xaa, %r8d
-  kmovq   %r8, %k2
-  mov 	 $length,$tmp1
-  and 	 \$0x70,$tmp1
-  cmp 	 \$0x60,$tmp1
-  je 	 .L_num_blocks_is_6_${rndsuffix}
-  cmp 	 \$0x50,$tmp1
-  je 	 .L_num_blocks_is_5_${rndsuffix}
-  cmp 	 \$0x40,$tmp1
-  je 	 .L_num_blocks_is_4_${rndsuffix}
-  cmp 	 \$0x30,$tmp1
-  je 	 .L_num_blocks_is_3_${rndsuffix}
-  cmp 	 \$0x20,$tmp1
-  je 	 .L_num_blocks_is_2_${rndsuffix}
-  cmp 	 \$0x10,$tmp1
-  je 	 .L_num_blocks_is_1_${rndsuffix}
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %ymm2,0x40($output)
+    add 	 \$0x60,$output
+    vextracti32x4 	 \$0x1,%zmm2,%xmm8
+    vextracti32x4 	 \$0x2,%zmm10,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
 
-  .L_num_blocks_is_7_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq    \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
-  vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
-  vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
-  vpclmulqdq    \$0x00, $ZPOLY, %zmm6, %zmm7
-  vpxorq		%zmm6, %zmm5, %zmm5{%k2}
-  vpxord		%zmm5, %zmm7, %zmm10
-  mov		\$0x0000ffffffffffff, $tmp1
-  kmovq		$tmp1, %k1
-  vmovdqu8	16*0($input), %zmm1
-  vmovdqu8	16*4($input), %zmm2{%k1}
-
-  add      \$0x70,$input
+    .L_remaining_num_blocks_is_5_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu 	 0x40($input),%xmm2
+    add 	 \$0x50,$input
 ___
-  }
+    }
 
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
 
-  {
-  $code .= <<___;
-  vmovdqu8	%zmm1, 16*0($output)
-  vmovdqu8	%zmm2, 16*4($output){%k1}
-  add 	 \$0x70,$output
-  vextracti32x4	\$0x2, %zmm2, %xmm8
-  vextracti32x4	\$0x3, %zmm10, %xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu 	 %xmm2,0x40($output)
+    add 	 \$0x50,$output
+    movdqa 	 %xmm2,%xmm8
+    vextracti32x4 	 \$0x1,%zmm10,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+
+    .L_remaining_num_blocks_is_4_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    add 	 \$0x40,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_6_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
-  vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
-  vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
-  vpxorq		%zmm6, %zmm5, %zmm5{%k2}
-  vpxord		%zmm5, %zmm7, %zmm10
-  vmovdqu8	16*0($input), %zmm1
-  vmovdqu8	16*4($input), %ymm2
-  add		    \$96, $input
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    add 	 \$0x40,$output
+    vextracti32x4 	 \$0x3,%zmm1,%xmm8
+    vextracti32x4 	 \$0x0,%zmm10,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
 ___
-  }
+    }
 
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8	%zmm1, 16*0($output)
-  vmovdqu8	%ymm2, 16*4($output)
-  add	    \$96, $output
-
-  vextracti32x4	\$0x1, %ymm2, %xmm8
-  vextracti32x4	\$0x2, %zmm10, %xmm0
-  and 	 \$0xf,$length
-  je		.L_ret_${rndsuffix}
-  jmp		.L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    .L_remaining_num_blocks_is_3_${rndsuffix}:
+    vextracti32x4 	 \$0x1,%zmm9,%xmm10
+    vextracti32x4 	 \$0x2,%zmm9,%xmm11
+    vmovdqu 	 ($input),%xmm1
+    vmovdqu 	 0x10($input),%xmm2
+    vmovdqu 	 0x20($input),%xmm3
+    add 	 \$0x30,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_5_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
-  vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
-  vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
-  vpxorq		%zmm6, %zmm5, %zmm5{%k2}
-  vpxord		%zmm5, %zmm7, %zmm10
-  vmovdqu8	    16*0($input), %zmm1
-  vmovdqu8	    16*4($input), %xmm2
-  add		    \$80, $input
+    encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    add 	 \$0x30,$output
+    vmovdqa 	 %xmm3,%xmm8
+    vextracti32x4 	 \$0x3,%zmm9,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
 ___
-  }
+    }
 
-  encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8	%zmm1, 16*0($output)
-  vmovdqu8	%xmm2, 16*4($output)
-  add	    \$80, $output
-
-  vmovdqa       %xmm2, %xmm8
-  vextracti32x4	\$0x1, %zmm10, %xmm0
-  and 	        \$0xf,$length
-  je		    .L_ret_${rndsuffix}
-  jmp		    .L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    .L_remaining_num_blocks_is_2_${rndsuffix}:
+    vextracti32x4 	 \$0x1,%zmm9,%xmm10
+    vmovdqu 	 ($input),%xmm1
+    vmovdqu 	 0x10($input),%xmm2
+    add 	 \$0x20,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_4_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
-  vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
-  vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
-  vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
-  vpxorq		%zmm6, %zmm5, %zmm5{%k2}
-  vpxord		%zmm5, %zmm7, %zmm10
-  vmovdqu8	  16*0($input), %zmm1
-  add		  \$64, $input
+    encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    add 	 \$0x20,$output
+    vmovdqa 	 %xmm2,%xmm8
+    vextracti32x4 	 \$0x2,%zmm9,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
 ___
-  }
+    }
 
-  encrypt_by_four("%zmm1", "%zmm9", "%zmm0");
-
-  {
-  $code .= <<___;
-  vmovdqu8      %zmm1, 16*0($output)
-  add           \$64, $output
-  vextracti32x4	\$0x3, %zmm1, %xmm8
-  vmovdqa       %xmm10, %xmm0
-  and 	 \$0xf,$length
-  je		.L_ret_${rndsuffix}
-  jmp		.L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    .L_remaining_num_blocks_is_1_${rndsuffix}:
+    vmovdqu 	 ($input),%xmm1
+    add 	 \$0x10,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_3_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq    \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
-  mov		\$0x0000ffffffffffff, $tmp1
-  kmovq		$tmp1, %k1
-  vmovdqu8	16*0($input), %zmm1{%k1}
-  add		\$48, $input
+    encrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    add 	 \$0x10,$output
+    vmovdqa 	 %xmm1,%xmm8
+    vextracti32x4 	 \$0x1,%zmm9,%xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+
+
+    .L_start_by16_${rndsuffix}:
+    vbroadcasti32x4 	 ($TW),%zmm0
+    vbroadcasti32x4 shufb_15_7(%rip),%zmm8
+    mov 	 \$0xaa,$tmp1
+    kmovq 	 $tmp1,%k2
+    vpshufb 	 %zmm8,%zmm0,%zmm1
+    vpsllvq const_dq3210(%rip),%zmm0,%zmm4
+    vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
+    vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
+    vpxord 	 %zmm4,%zmm3,%zmm9
+    vpsllvq const_dq7654(%rip),%zmm0,%zmm5
+    vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
+    vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
+    vpxord 	 %zmm5,%zmm7,%zmm10
+    vpsrldq 	 \$0xf,%zmm9,%zmm13
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm13,%zmm14
+    vpslldq 	 \$0x1,%zmm9,%zmm11
+    vpxord 	 %zmm14,%zmm11,%zmm11
+    vpsrldq 	 \$0xf,%zmm10,%zmm15
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm15,%zmm16
+    vpslldq 	 \$0x1,%zmm10,%zmm12
+    vpxord 	 %zmm16,%zmm12,%zmm12
+
+    .L_main_loop_run_16_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2
+    vmovdqu8 	 0x80($input),%zmm3
+    vmovdqu8 	 0xc0($input),%zmm4
+    add 	 \$0x100,$input
 ___
-  }
+    }
 
-  encrypt_by_four("%zmm1", "%zmm9", "%zmm0");
+    encrypt_by_16_zmm("%zmm1", "%zmm2", "%zmm3", "%zmm4", "%zmm9",
+                      "%zmm10", "%zmm11", "%zmm12", "%zmm0", 0);
 
-  {
-  $code .= <<___;
-  vmovdqu8	%zmm1, 16*0($output){%k1}
-  add		\$48, $output
-  vextracti32x4   \$2, %zmm1, %xmm8
-  vextracti32x4	\$3, %zmm9, %xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %zmm2,0x40($output)
+    vmovdqu8 	 %zmm3,0x80($output)
+    vmovdqu8 	 %zmm4,0xc0($output)
+    add 	 \$0x100,$output
+    sub 	 \$0x100,$length
+    cmp 	 \$0x100,$length
+    jge 	 .L_main_loop_run_16_${rndsuffix}
+    cmp 	 \$0x80,$length
+    jge 	 .L_main_loop_run_8_${rndsuffix}
+    vextracti32x4 	 \$0x3,%zmm4,%xmm0
+    jmp 	 .L_do_n_blocks_${rndsuffix}
+
+    .L_start_by8_${rndsuffix}:
+    vbroadcasti32x4 	 ($TW),%zmm0
+    vbroadcasti32x4 shufb_15_7(%rip),%zmm8
+    mov 	 \$0xaa,$tmp1
+    kmovq 	 $tmp1,%k2
+    vpshufb 	 %zmm8,%zmm0,%zmm1
+    vpsllvq const_dq3210(%rip),%zmm0,%zmm4
+    vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
+    vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
+    vpxord 	 %zmm4,%zmm3,%zmm9
+    vpsllvq const_dq7654(%rip),%zmm0,%zmm5
+    vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
+    vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
+    vpxord 	 %zmm5,%zmm7,%zmm10
+
+    .L_main_loop_run_8_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2
+    add 	 \$0x80,$input
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_2_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq      \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 0);
 
-  vmovdqu8	16*0($input), %ymm1
-  add		\$32, $input
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %zmm2,0x40($output)
+    add 	 \$0x80,$output
+    sub 	 \$0x80,$length
+    cmp 	 \$0x80,$length
+    jge 	 .L_main_loop_run_8_${rndsuffix}
+    vextracti32x4 	 \$0x3,%zmm2,%xmm0
+    jmp 	 .L_do_n_blocks_${rndsuffix}
+
+    .L_steal_cipher_${rndsuffix}:
+    vmovdqa 	 %xmm8,%xmm2
+    lea vpshufb_shf_table(%rip),$TEMPLOW
+    vmovdqu 	 ($TEMPLOW,$length,1),%xmm10
+    vpshufb 	 %xmm10,%xmm8,%xmm8
+    vmovdqu 	 -0x10($input,$length,1),%xmm3
+    vmovdqu 	 %xmm8,-0x10($output,$length,1)
+    lea vpshufb_shf_table(%rip),$TEMPLOW
+    add \$16, $TEMPLOW
+    sub 	 $length,$TEMPLOW
+    vmovdqu 	 ($TEMPLOW),%xmm10
+    vpxor mask1(%rip),%xmm10,%xmm10
+    vpshufb 	 %xmm10,%xmm3,%xmm3
+    vpblendvb 	 %xmm10,%xmm2,%xmm3,%xmm3
+    vpxor 	 %xmm0,%xmm3,%xmm8
+    vpxor 	 ($key1),%xmm8,%xmm8
+    vaesenc 	 0x10($key1),%xmm8,%xmm8
+    vaesenc 	 0x20($key1),%xmm8,%xmm8
+    vaesenc 	 0x30($key1),%xmm8,%xmm8
+    vaesenc 	 0x40($key1),%xmm8,%xmm8
+    vaesenc 	 0x50($key1),%xmm8,%xmm8
+    vaesenc 	 0x60($key1),%xmm8,%xmm8
+    vaesenc 	 0x70($key1),%xmm8,%xmm8
+    vaesenc 	 0x80($key1),%xmm8,%xmm8
+    vaesenc 	 0x90($key1),%xmm8,%xmm8
+    vaesenclast 	 0xa0($key1),%xmm8,%xmm8
+    vpxor 	 %xmm0,%xmm8,%xmm8
+    vmovdqu 	 %xmm8,-0x10($output)
 ___
-  }
+    }
 
-  encrypt_by_four("%ymm1", "%ymm9", "%ymm0");
-
-  {
-  $code .= <<___;
-  vmovdqu8	%ymm1, 16*0($output)
-  add		\$32, $output
-
-  vextracti32x4   \$1, %ymm1, %xmm8
-  vextracti32x4	  \$2, %zmm9, %xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
+    {
+    $code .= <<___;
+    .L_ret_${rndsuffix}:
+    mov 	 $GP_STORAGE($TW),%rbx
+    xor    $tmp1,$tmp1
+    mov    $tmp1,$GP_STORAGE($TW)
+    # Zero-out the whole of `%zmm0`.
+    vpxorq %zmm0,%zmm0,%zmm0
 ___
-  }
+    }
 
-  {
-  $code .= <<___;
-  .L_num_blocks_is_1_${rndsuffix}:
-  vpshufb		%zmm8, %zmm0, %zmm1
-  vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
-  vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
-  vpclmulqdq      \$0x00, $ZPOLY, %zmm2, %zmm3
-  vpxorq		%zmm2, %zmm4, %zmm4{%k2}
-  vpxord		%zmm4, %zmm3, %zmm9
+    if ($win64) {
+      $code .= <<___;
+      mov $GP_STORAGE + 8*1($TW),%rdi
+      mov $tmp1,$GP_STORAGE + 8*1($TW)
+      mov $GP_STORAGE + 8*2($TW),%rsi
+      mov $tmp1,$GP_STORAGE + 8*2($TW)
 
-  vmovdqu8	16*0($input), %xmm1
-  add		\$16, $input
+      vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
+      vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
+      vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
+      vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
+
+      # Zero the 64 bytes we just restored to the xmm registers.
+      vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+
+      vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
+      vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
+      vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
+      vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
+
+      # And again.
+      vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+
+      vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
+      vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
+
+      # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
+      # source operand.
+      vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
 ___
-  }
+    }
 
-  encrypt_by_four("%ymm1", "%ymm9", "%ymm0");
+    {
+    $code .= <<___;
+    mov %rbp,$TW
+    pop %rbp
+    vzeroupper
+    ret
 
-  {
-  $code .= <<___;
-  vmovdqu8	%xmm1, 16*0($output)
-  add		\$16, $output
+    .L_less_than_128_bytes_${rndsuffix}:
+    vpbroadcastq $gf_poly_8b, $ZPOLY
+    cmp 	 \$0x10,$length
+    jb 	 .L_ret_${rndsuffix}
+    vbroadcasti32x4 ($TW), %zmm0
+    vbroadcasti32x4 shufb_15_7(%rip), %zmm8
+    movl    \$0xaa, %r8d
+    kmovq   %r8, %k2
+    mov 	 $length,$tmp1
+    and 	 \$0x70,$tmp1
+    cmp 	 \$0x60,$tmp1
+    je 	 .L_num_blocks_is_6_${rndsuffix}
+    cmp 	 \$0x50,$tmp1
+    je 	 .L_num_blocks_is_5_${rndsuffix}
+    cmp 	 \$0x40,$tmp1
+    je 	 .L_num_blocks_is_4_${rndsuffix}
+    cmp 	 \$0x30,$tmp1
+    je 	 .L_num_blocks_is_3_${rndsuffix}
+    cmp 	 \$0x20,$tmp1
+    je 	 .L_num_blocks_is_2_${rndsuffix}
+    cmp 	 \$0x10,$tmp1
+    je 	 .L_num_blocks_is_1_${rndsuffix}
 
-  vmovdqa  %xmm1, %xmm8
-  vextracti32x4	  \$1, %zmm9, %xmm0
-  and 	 \$0xf,$length
-  je 	 .L_ret_${rndsuffix}
-  jmp 	 .L_steal_cipher_${rndsuffix}
-  .cfi_endproc
+    .L_num_blocks_is_7_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq    \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+    vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
+    vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
+    vpclmulqdq    \$0x00, $ZPOLY, %zmm6, %zmm7
+    vpxorq		%zmm6, %zmm5, %zmm5{%k2}
+    vpxord		%zmm5, %zmm7, %zmm10
+    mov		\$0x0000ffffffffffff, $tmp1
+    kmovq		$tmp1, %k1
+    vmovdqu8	16*0($input), %zmm1
+    vmovdqu8	16*4($input), %zmm2{%k1}
+
+    add      \$0x70,$input
 ___
+    }
+
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8	%zmm1, 16*0($output)
+    vmovdqu8	%zmm2, 16*4($output){%k1}
+    add 	 \$0x70,$output
+    vextracti32x4	\$0x2, %zmm2, %xmm8
+    vextracti32x4	\$0x3, %zmm10, %xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_6_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+    vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
+    vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
+    vpxorq		%zmm6, %zmm5, %zmm5{%k2}
+    vpxord		%zmm5, %zmm7, %zmm10
+    vmovdqu8	16*0($input), %zmm1
+    vmovdqu8	16*4($input), %ymm2
+    add		    \$96, $input
+___
+    }
+
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8	%zmm1, 16*0($output)
+    vmovdqu8	%ymm2, 16*4($output)
+    add	    \$96, $output
+
+    vextracti32x4	\$0x1, %ymm2, %xmm8
+    vextracti32x4	\$0x2, %zmm10, %xmm0
+    and 	 \$0xf,$length
+    je		.L_ret_${rndsuffix}
+    jmp		.L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_5_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+    vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
+    vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
+    vpxorq		%zmm6, %zmm5, %zmm5{%k2}
+    vpxord		%zmm5, %zmm7, %zmm10
+    vmovdqu8	    16*0($input), %zmm1
+    vmovdqu8	    16*4($input), %xmm2
+    add		    \$80, $input
+___
+    }
+
+    encrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8	%zmm1, 16*0($output)
+    vmovdqu8	%xmm2, 16*4($output)
+    add	    \$80, $output
+
+    vmovdqa       %xmm2, %xmm8
+    vextracti32x4	\$0x1, %zmm10, %xmm0
+    and 	        \$0xf,$length
+    je		    .L_ret_${rndsuffix}
+    jmp		    .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_4_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+    vpsllvq		const_dq7654(%rip), %zmm0, %zmm5
+    vpsrlvq		const_dq1234(%rip), %zmm1, %zmm6
+    vpclmulqdq  \$0x00, $ZPOLY, %zmm6, %zmm7
+    vpxorq		%zmm6, %zmm5, %zmm5{%k2}
+    vpxord		%zmm5, %zmm7, %zmm10
+    vmovdqu8	  16*0($input), %zmm1
+    add		  \$64, $input
+___
+    }
+
+    encrypt_by_four("%zmm1", "%zmm9", "%zmm0");
+
+    {
+    $code .= <<___;
+    vmovdqu8      %zmm1, 16*0($output)
+    add           \$64, $output
+    vextracti32x4	\$0x3, %zmm1, %xmm8
+    vmovdqa       %xmm10, %xmm0
+    and 	 \$0xf,$length
+    je		.L_ret_${rndsuffix}
+    jmp		.L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_3_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq    \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+    mov		\$0x0000ffffffffffff, $tmp1
+    kmovq		$tmp1, %k1
+    vmovdqu8	16*0($input), %zmm1{%k1}
+    add		\$48, $input
+___
+    }
+
+    encrypt_by_four("%zmm1", "%zmm9", "%zmm0");
+
+    {
+    $code .= <<___;
+    vmovdqu8	%zmm1, 16*0($output){%k1}
+    add		\$48, $output
+    vextracti32x4   \$2, %zmm1, %xmm8
+    vextracti32x4	\$3, %zmm9, %xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_2_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq      \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+
+    vmovdqu8	16*0($input), %ymm1
+    add		\$32, $input
+___
+    }
+
+    encrypt_by_four("%ymm1", "%ymm9", "%ymm0");
+
+    {
+    $code .= <<___;
+    vmovdqu8	%ymm1, 16*0($output)
+    add		\$32, $output
+
+    vextracti32x4   \$1, %ymm1, %xmm8
+    vextracti32x4	  \$2, %zmm9, %xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_num_blocks_is_1_${rndsuffix}:
+    vpshufb		%zmm8, %zmm0, %zmm1
+    vpsllvq		const_dq3210(%rip), %zmm0, %zmm4
+    vpsrlvq		const_dq5678(%rip), %zmm1, %zmm2
+    vpclmulqdq      \$0x00, $ZPOLY, %zmm2, %zmm3
+    vpxorq		%zmm2, %zmm4, %zmm4{%k2}
+    vpxord		%zmm4, %zmm3, %zmm9
+
+    vmovdqu8	16*0($input), %xmm1
+    add		\$16, $input
+___
+    }
+
+    encrypt_by_four("%ymm1", "%ymm9", "%ymm0");
+
+    {
+    $code .= <<___;
+    vmovdqu8	%xmm1, 16*0($output)
+    add		\$16, $output
+
+    vmovdqa  %xmm1, %xmm8
+    vextracti32x4	  \$1, %zmm9, %xmm0
+    and 	 \$0xf,$length
+    je 	 .L_ret_${rndsuffix}
+    jmp 	 .L_steal_cipher_${rndsuffix}
+    .cfi_endproc
+___
+    }
   }
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1938,969 +1942,975 @@ ___
   # ;               const uint8_t iv[16])      // initial tweak value, 16 bytes
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  my $rndsuffix = &random_string();
-
-  {
-  $code.=<<___;
-  .globl	aesni_xts_128_decrypt_avx512
-  .hidden	aesni_xts_128_decrypt_avx512
-  .type	aesni_xts_128_decrypt_avx512,\@abi-omnipotent
-  .align	32
-  aesni_xts_128_decrypt_avx512:
-  .cfi_startproc
-          endbranch
+  sub decrypt {
+    my $is_256 = $_[0];
+    my $rndsuffix = &random_string();
+  
+    {
+    $code.=<<___;
+    .globl	aesni_xts_128_decrypt_avx512
+    .hidden	aesni_xts_128_decrypt_avx512
+    .type	aesni_xts_128_decrypt_avx512,\@abi-omnipotent
+    .align	32
+    aesni_xts_128_decrypt_avx512:
+    .cfi_startproc
+    endbranch
 ___
-  }
-  $code .= "push 	 %rbp\n";
-  $code .= "mov 	 $TW,%rbp\n";
-  $code .= "sub 	 \$$VARIABLE_OFFSET,$TW\n";
-  $code .= "and 	 \$0xffffffffffffffc0,$TW\n";
-  $code .= "mov 	 %rbx,$GP_STORAGE($TW)\n";
+    }
+    $code .= "push 	 %rbp\n";
+    $code .= "mov 	 $TW,%rbp\n";
+    $code .= "sub 	 \$$VARIABLE_OFFSET,$TW\n";
+    $code .= "and 	 \$0xffffffffffffffc0,$TW\n";
+    $code .= "mov 	 %rbx,$GP_STORAGE($TW)\n";
 
-  if ($win64) {
-    $code .= "mov 	 %rdi,$GP_STORAGE + 8*1($TW)\n";
-    $code .= "mov 	 %rsi,$GP_STORAGE + 8*2($TW)\n";
-    $code .= "vmovdqa      %xmm6, $XMM_STORAGE + 16*0($TW)\n";
-    $code .= "vmovdqa      %xmm7, $XMM_STORAGE + 16*1($TW)\n";
-    $code .= "vmovdqa      %xmm8, $XMM_STORAGE + 16*2($TW)\n";
-    $code .= "vmovdqa      %xmm9, $XMM_STORAGE + 16*3($TW)\n";
-    $code .= "vmovdqa      %xmm10, $XMM_STORAGE + 16*4($TW)\n";
-    $code .= "vmovdqa      %xmm11, $XMM_STORAGE + 16*5($TW)\n";
-    $code .= "vmovdqa      %xmm12, $XMM_STORAGE + 16*6($TW)\n";
-    $code .= "vmovdqa      %xmm13, $XMM_STORAGE + 16*7($TW)\n";
-    $code .= "vmovdqa      %xmm14, $XMM_STORAGE + 16*8($TW)\n";
-    $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
-  }
+    if ($win64) {
+      $code .= "mov 	 %rdi,$GP_STORAGE + 8*1($TW)\n";
+      $code .= "mov 	 %rsi,$GP_STORAGE + 8*2($TW)\n";
+      $code .= "vmovdqa      %xmm6, $XMM_STORAGE + 16*0($TW)\n";
+      $code .= "vmovdqa      %xmm7, $XMM_STORAGE + 16*1($TW)\n";
+      $code .= "vmovdqa      %xmm8, $XMM_STORAGE + 16*2($TW)\n";
+      $code .= "vmovdqa      %xmm9, $XMM_STORAGE + 16*3($TW)\n";
+      $code .= "vmovdqa      %xmm10, $XMM_STORAGE + 16*4($TW)\n";
+      $code .= "vmovdqa      %xmm11, $XMM_STORAGE + 16*5($TW)\n";
+      $code .= "vmovdqa      %xmm12, $XMM_STORAGE + 16*6($TW)\n";
+      $code .= "vmovdqa      %xmm13, $XMM_STORAGE + 16*7($TW)\n";
+      $code .= "vmovdqa      %xmm14, $XMM_STORAGE + 16*8($TW)\n";
+      $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
+    }
 
-  $code .= "mov 	 \$0x87, $gf_poly_8b\n";
-  $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
-  $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n"; # for key expansion
+    $code .= "mov 	 \$0x87, $gf_poly_8b\n";
+    $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
+    $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n"; # for key expansion
 
-  encrypt_tweak_for_decryption("%xmm0", "%xmm1", "%xmm2", "%xmm3",
-                               $key2, $key1);
+    encrypt_tweak_for_decryption("%xmm0", "%xmm1", "%xmm2", "%xmm3",
+                                 $key2, $key1);
 
-  if ($win64) {
-    $code .= "mov	 $input, 8 + 8*5(%rbp)\n"; # ciphertext pointer
-    $code .= "mov        $output, 8 + 8*6(%rbp)\n"; # plaintext pointer
-  }
+    if ($win64) {
+      $code .= "mov	 $input, 8 + 8*5(%rbp)\n"; # ciphertext pointer
+      $code .= "mov        $output, 8 + 8*6(%rbp)\n"; # plaintext pointer
+    }
 
-  {
-  $code.=<<___;
+    {
+    $code.=<<___;
 
-  cmp 	 \$0x80,$length
-  jb 	 .L_less_than_128_bytes_${rndsuffix}
-  vpbroadcastq 	 $gf_poly_8b,$ZPOLY
-  cmp 	 \$0x100,$length
-  jge 	 .L_start_by16_${rndsuffix}
-  jmp 	 .L_start_by8_${rndsuffix}
+    cmp 	 \$0x80,$length
+    jb 	 .L_less_than_128_bytes_${rndsuffix}
+    vpbroadcastq 	 $gf_poly_8b,$ZPOLY
+    cmp 	 \$0x100,$length
+    jge 	 .L_start_by16_${rndsuffix}
+    jmp 	 .L_start_by8_${rndsuffix}
 
-  .L_do_n_blocks_${rndsuffix}:
-  cmp 	 \$0x0,$length
-  je 	 .L_ret_${rndsuffix}
-  cmp 	 \$0x70,$length
-  jge 	 .L_remaining_num_blocks_is_7_${rndsuffix}
-  cmp 	 \$0x60,$length
-  jge 	 .L_remaining_num_blocks_is_6_${rndsuffix}
-  cmp 	 \$0x50,$length
-  jge 	 .L_remaining_num_blocks_is_5_${rndsuffix}
-  cmp 	 \$0x40,$length
-  jge 	 .L_remaining_num_blocks_is_4_${rndsuffix}
-  cmp 	 \$0x30,$length
-  jge 	 .L_remaining_num_blocks_is_3_${rndsuffix}
-  cmp 	 \$0x20,$length
-  jge 	 .L_remaining_num_blocks_is_2_${rndsuffix}
-  cmp 	 \$0x10,$length
-  jge 	 .L_remaining_num_blocks_is_1_${rndsuffix}
+    .L_do_n_blocks_${rndsuffix}:
+    cmp 	 \$0x0,$length
+    je 	 .L_ret_${rndsuffix}
+    cmp 	 \$0x70,$length
+    jge 	 .L_remaining_num_blocks_is_7_${rndsuffix}
+    cmp 	 \$0x60,$length
+    jge 	 .L_remaining_num_blocks_is_6_${rndsuffix}
+    cmp 	 \$0x50,$length
+    jge 	 .L_remaining_num_blocks_is_5_${rndsuffix}
+    cmp 	 \$0x40,$length
+    jge 	 .L_remaining_num_blocks_is_4_${rndsuffix}
+    cmp 	 \$0x30,$length
+    jge 	 .L_remaining_num_blocks_is_3_${rndsuffix}
+    cmp 	 \$0x20,$length
+    jge 	 .L_remaining_num_blocks_is_2_${rndsuffix}
+    cmp 	 \$0x10,$length
+    jge 	 .L_remaining_num_blocks_is_1_${rndsuffix}
 
-  # _remaining_num_blocks_is_0:
-  vmovdqu		%xmm5, %xmm1
-  # xmm5 contains last full block to decrypt with next teawk
+    # _remaining_num_blocks_is_0:
+    vmovdqu		%xmm5, %xmm1
+    # xmm5 contains last full block to decrypt with next teawk
 ___
-  }
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu %xmm1, -0x10($output)
-  vmovdqa %xmm1, %xmm8
-
-  # Calc previous tweak
-  mov		\$0x1,$tmp1
-  kmovq		$tmp1, %k1
-  vpsllq	\$0x3f,%xmm9,%xmm13
-  vpsraq	\$0x3f,%xmm13,%xmm14
-  vpandq	%xmm25,%xmm14,%xmm5
-  vpxorq        %xmm5,%xmm9,%xmm9{%k1}
-  vpsrldq       \$0x8,%xmm9,%xmm10
-  .byte 98, 211, 181, 8, 115, 194, 1 #vpshrdq \$0x1,%xmm10,%xmm9,%xmm0
-  vpslldq       \$0x8,%xmm13,%xmm13
-  vpxorq        %xmm13,%xmm0,%xmm0
-  jmp           .L_steal_cipher_${rndsuffix}
-
-  .L_remaining_num_blocks_is_7_${rndsuffix}:
-  mov 	 \$0xffffffffffffffff,$tmp1
-  shr 	 \$0x10,$tmp1
-  kmovq 	 $tmp1,%k1
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2{%k1}
-  add 	         \$0x70,$input
-  and            \$0xf,$length
-  je             .L_done_7_remain_${rndsuffix}
-  vextracti32x4   \$0x2,%zmm10,%xmm12
-  vextracti32x4   \$0x3,%zmm10,%xmm13
-  vinserti32x4    \$0x2,%xmm13,%zmm10,%zmm10
-___
-  }
-
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1, ($output)
-  vmovdqu8 	 %zmm2, 0x40($output){%k1}
-  add 	         \$0x70, $output
-  vextracti32x4  \$0x2,%zmm2,%xmm8
-  vmovdqa        %xmm12,%xmm0
-  jmp            .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_7_remain_${rndsuffix}:\n";
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8        %zmm1, ($output)
-  vmovdqu8        %zmm2, 0x40($output){%k1}
-  jmp     .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_6_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%ymm2
-  add 	         \$0x60,$input
-  and            \$0xf, $length
-  je             .L_done_6_remain_${rndsuffix}
-  vextracti32x4   \$0x1,%zmm10,%xmm12
-  vextracti32x4   \$0x2,%zmm10,%xmm13
-  vinserti32x4    \$0x1,%xmm13,%zmm10,%zmm10
-___
-  }
-
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1, ($output)
-  vmovdqu8 	 %ymm2, 0x40($output)
-  add 	         \$0x60,$output
-  vextracti32x4  \$0x1,%zmm2,%xmm8
-  vmovdqa        %xmm12,%xmm0
-  jmp            .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_6_remain_${rndsuffix}:\n";
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8        %zmm1, ($output)
-  vmovdqu8        %ymm2,0x40($output)
-  jmp             .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_5_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu 	 0x40($input),%xmm2
-  add 	         \$0x50,$input
-  and            \$0xf,$length
-  je             .L_done_5_remain_${rndsuffix}
-  vmovdqa        %xmm10,%xmm12
-  vextracti32x4  \$0x1,%zmm10,%xmm10
-___
-  }
-
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8         %zmm1, ($output)
-  vmovdqu          %xmm2, 0x40($output)
-  add              \$0x50, $output
-  vmovdqa          %xmm2,%xmm8
-  vmovdqa          %xmm12,%xmm0
-  jmp              .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_5_remain_${rndsuffix}:\n";
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8        %zmm1, ($output)
-  vmovdqu8        %xmm2, 0x40($output)
-  jmp             .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_4_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  add 	         \$0x40,$input
-  and            \$0xf, $length
-  je             .L_done_4_remain_${rndsuffix}
-  vextracti32x4   \$0x3,%zmm9,%xmm12
-  vinserti32x4    \$0x3,%xmm10,%zmm9,%zmm9
-___
-  }
-
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8        %zmm1,($output)
-  add             \$0x40,$output
-  vextracti32x4   \$0x3,%zmm1,%xmm8
-  vmovdqa         %xmm12,%xmm0
-  jmp             .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_4_remain_${rndsuffix}:\n";
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
-
-  {
-  $code .= <<___;
-  vmovdqu8        %zmm1, ($output)
-  jmp             .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_3_${rndsuffix}:
-  vmovdqu         ($input),%xmm1
-  vmovdqu         0x10($input),%xmm2
-  vmovdqu         0x20($input),%xmm3
-  add             \$0x30,$input
-  and             \$0xf,$length
-  je              .L_done_3_remain_${rndsuffix}
-  vextracti32x4   \$0x2,%zmm9,%xmm13
-  vextracti32x4   \$0x1,%zmm9,%xmm10
-  vextracti32x4   \$0x3,%zmm9,%xmm11
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  add 	         \$0x30,$output
-  vmovdqa 	 %xmm3,%xmm8
-  vmovdqa        %xmm13,%xmm0
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-  $code .= "\n.L_done_3_remain_${rndsuffix}:\n";
-  $code .= "vextracti32x4   \$0x1,%zmm9,%xmm10\n";
-  $code .= "vextracti32x4   \$0x2,%zmm9,%xmm11\n";
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu %xmm1,($output)
-  vmovdqu %xmm2,0x10($output)
-  vmovdqu %xmm3,0x20($output)
-  jmp     .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_2_${rndsuffix}:
-  vmovdqu         ($input),%xmm1
-  vmovdqu         0x10($input),%xmm2
-  add             \$0x20,$input
-  and             \$0xf,$length
-  je              .L_done_2_remain_${rndsuffix}
-  vextracti32x4   \$0x2,%zmm9,%xmm10
-  vextracti32x4   \$0x1,%zmm9,%xmm12
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  add 	         \$0x20,$output
-  vmovdqa 	 %xmm2,%xmm8
-  vmovdqa 	 %xmm12,%xmm0
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-  $code .= "\n.L_done_2_remain_${rndsuffix}:\n";
-  $code .= "vextracti32x4   \$0x1,%zmm9,%xmm10\n";
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu   %xmm1,($output)
-  vmovdqu   %xmm2,0x10($output)
-  jmp       .L_ret_${rndsuffix}
-
-  .L_remaining_num_blocks_is_1_${rndsuffix}:
-  vmovdqu 	 ($input),%xmm1
-  add 	         \$0x10,$input
-  and            \$0xf,$length
-  je             .L_done_1_remain_${rndsuffix}
-  vextracti32x4  \$0x1,%zmm9,%xmm11
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm11", "%xmm10", "%xmm9", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  add 	         \$0x10,$output
-  vmovdqa 	 %xmm1,%xmm8
-  vmovdqa 	 %xmm9,%xmm0
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_1_remain_${rndsuffix}:\n";
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu   %xmm1, ($output)
-  jmp       .L_ret_${rndsuffix}
-
-  .L_start_by16_${rndsuffix}:
-  vbroadcasti32x4 	 ($TW),%zmm0
-  vbroadcasti32x4 shufb_15_7(%rip),%zmm8
-  mov 	 \$0xaa,$tmp1
-  kmovq 	 $tmp1,%k2
-
-  # Mult tweak by 2^{3, 2, 1, 0}
-  vpshufb 	 %zmm8,%zmm0,%zmm1
-  vpsllvq const_dq3210(%rip),%zmm0,%zmm4
-  vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
-  vpclmulqdq 	 \$0x0,$ZPOLY,%zmm2,%zmm3
-  vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
-  vpxord 	 %zmm4,%zmm3,%zmm9
-
-  # Mult tweak by 2^{7, 6, 5, 4}
-  vpsllvq const_dq7654(%rip),%zmm0,%zmm5
-  vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
-  vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
-  vpxord 	 %zmm5,%zmm7,%zmm10
-
-  # Make next 8 tweek values by all x 2^8
-  vpsrldq 	 \$0xf,%zmm9,%zmm13
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm13,%zmm14
-  vpslldq 	 \$0x1,%zmm9,%zmm11
-  vpxord 	 %zmm14,%zmm11,%zmm11
-
-  vpsrldq 	 \$0xf,%zmm10,%zmm15
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm15,%zmm16
-  vpslldq 	 \$0x1,%zmm10,%zmm12
-  vpxord 	 %zmm16,%zmm12,%zmm12
-
-  .L_main_loop_run_16_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2
-  vmovdqu8 	 0x80($input),%zmm3
-  vmovdqu8 	 0xc0($input),%zmm4
-  vmovdqu8 	 0xf0($input),%zmm5
-  add 	 \$0x100,$input
-___
-  }
-
-  decrypt_by_16_zmm("%zmm1", "%zmm2", "%zmm3", "%zmm4", "%zmm9",
-                    "%zmm10", "%zmm11", "%zmm12", "%zmm0", 0);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %zmm2,0x40($output)
-  vmovdqu8 	 %zmm3,0x80($output)
-  vmovdqu8 	 %zmm4,0xc0($output)
-  add 	 \$0x100,$output
-  sub 	 \$0x100,$length
-  cmp 	 \$0x100,$length
-  jge 	 .L_main_loop_run_16_${rndsuffix}
-
-  cmp 	 \$0x80,$length
-  jge 	 .L_main_loop_run_8_${rndsuffix}
-  jmp 	 .L_do_n_blocks_${rndsuffix}
-
-  .L_start_by8_${rndsuffix}:
-  # Make first 7 tweek values
-  vbroadcasti32x4 	 ($TW),%zmm0
-  vbroadcasti32x4 shufb_15_7(%rip),%zmm8
-  mov 	 \$0xaa,$tmp1
-  kmovq 	 $tmp1,%k2
-
-  # Mult tweak by 2^{3, 2, 1, 0}
-  vpshufb 	 %zmm8,%zmm0,%zmm1
-  vpsllvq const_dq3210(%rip),%zmm0,%zmm4
-  vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
-  vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
-  vpxord 	 %zmm4,%zmm3,%zmm9
-
-  # Mult tweak by 2^{7, 6, 5, 4}
-  vpsllvq const_dq7654(%rip),%zmm0,%zmm5
-  vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
-  vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
-  vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
-  vpxord 	 %zmm5,%zmm7,%zmm10
-
-  .L_main_loop_run_8_${rndsuffix}:
-  vmovdqu8 	 ($input),%zmm1
-  vmovdqu8 	 0x40($input),%zmm2
-  vmovdqu8 	 0x70($input),%xmm5
-  add 	         \$0x80,$input
-___
-  }
-
-
-  decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 0);
-
-  {
-  $code .= <<___;
-  vmovdqu8 	 %zmm1,($output)
-  vmovdqu8 	 %zmm2,0x40($output)
-  add 	 \$0x80,$output
-  sub 	 \$0x80,$length
-  cmp 	 \$0x80,$length
-  jge 	 .L_main_loop_run_8_${rndsuffix}
-  jmp 	 .L_do_n_blocks_${rndsuffix}
-
-  .L_steal_cipher_${rndsuffix}:
-  # start cipher stealing simplified: xmm8-last cipher block, xmm0-next tweak
-  vmovdqa 	 %xmm8,%xmm2
-
-  # shift xmm8 to the left by 16-N_val bytes
-  lea vpshufb_shf_table(%rip),$TEMPLOW
-  vmovdqu 	 ($TEMPLOW,$length,1),%xmm10
-  vpshufb 	 %xmm10,%xmm8,%xmm8
-
-
-  vmovdqu 	 -0x10($input,$length,1),%xmm3
-  vmovdqu 	 %xmm8,-0x10($output,$length,1)
-
-  # shift xmm3 to the right by 16-N_val bytes
-  lea vpshufb_shf_table(%rip), $TEMPLOW
-  add \$16, $TEMPLOW
-  sub 	 $length,$TEMPLOW
-  vmovdqu 	 ($TEMPLOW),%xmm10
-  vpxor mask1(%rip),%xmm10,%xmm10
-  vpshufb 	 %xmm10,%xmm3,%xmm3
-
-  vpblendvb 	 %xmm10,%xmm2,%xmm3,%xmm3
-
-  # xor Tweak value
-  vpxor 	 %xmm0,%xmm3,%xmm8
-
-  # decrypt last block with cipher stealing
-  vpxor 	 ($key1),%xmm8,%xmm8
-  vaesdec 	 0x10($key1),%xmm8,%xmm8
-  vaesdec 	 0x20($key1),%xmm8,%xmm8
-  vaesdec 	 0x30($key1),%xmm8,%xmm8
-  vaesdec 	 0x40($key1),%xmm8,%xmm8
-  vaesdec 	 0x50($key1),%xmm8,%xmm8
-  vaesdec 	 0x60($key1),%xmm8,%xmm8
-  vaesdec 	 0x70($key1),%xmm8,%xmm8
-  vaesdec 	 0x80($key1),%xmm8,%xmm8
-  vaesdec 	 0x90($key1),%xmm8,%xmm8
-  vaesdeclast 	 0xa0($key1),%xmm8,%xmm8
-
-  # xor Tweak value
-  vpxor 	 %xmm0,%xmm8,%xmm8
-
-  .L_done_${rndsuffix}:
-  # store last ciphertext value
-  vmovdqu 	 %xmm8,-0x10($output)
-___
-  }
-
-  {
-  $code .= <<___;
-  .L_ret_${rndsuffix}:
-  mov 	 $GP_STORAGE($TW),%rbx
-  xor    $tmp1,$tmp1
-  mov    $tmp1,$GP_STORAGE($TW)
-  # Zero-out the whole of `%zmm0`.
-  vpxorq %zmm0,%zmm0,%zmm0
-___
-  }
-
-  if ($win64) {
+    }
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+
+    {
     $code .= <<___;
-    mov $GP_STORAGE + 8*1($TW),%rdi
-    mov $tmp1,$GP_STORAGE + 8*1($TW)
-    mov $GP_STORAGE + 8*2($TW),%rsi
-    mov $tmp1,$GP_STORAGE + 8*2($TW)
+    vmovdqu %xmm1, -0x10($output)
+    vmovdqa %xmm1, %xmm8
 
-    vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
-    vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
-    vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
-    vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
+    # Calc previous tweak
+    mov		\$0x1,$tmp1
+    kmovq		$tmp1, %k1
+    vpsllq	\$0x3f,%xmm9,%xmm13
+    vpsraq	\$0x3f,%xmm13,%xmm14
+    vpandq	%xmm25,%xmm14,%xmm5
+    vpxorq        %xmm5,%xmm9,%xmm9{%k1}
+    vpsrldq       \$0x8,%xmm9,%xmm10
+    .byte 98, 211, 181, 8, 115, 194, 1 #vpshrdq \$0x1,%xmm10,%xmm9,%xmm0
+    vpslldq       \$0x8,%xmm13,%xmm13
+    vpxorq        %xmm13,%xmm0,%xmm0
+    jmp           .L_steal_cipher_${rndsuffix}
 
-    # Zero the 64 bytes we just restored to the xmm registers.
-    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+    .L_remaining_num_blocks_is_7_${rndsuffix}:
+    mov 	 \$0xffffffffffffffff,$tmp1
+    shr 	 \$0x10,$tmp1
+    kmovq 	 $tmp1,%k1
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2{%k1}
+    add 	         \$0x70,$input
+    and            \$0xf,$length
+    je             .L_done_7_remain_${rndsuffix}
+    vextracti32x4   \$0x2,%zmm10,%xmm12
+    vextracti32x4   \$0x3,%zmm10,%xmm13
+    vinserti32x4    \$0x2,%xmm13,%zmm10,%zmm10
+___
+    }
 
-    vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
-    vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
-    vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
-    vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
 
-    # And again.
-    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1, ($output)
+    vmovdqu8 	 %zmm2, 0x40($output){%k1}
+    add 	         \$0x70, $output
+    vextracti32x4  \$0x2,%zmm2,%xmm8
+    vmovdqa        %xmm12,%xmm0
+    jmp            .L_steal_cipher_${rndsuffix}
+___
+    }
 
-    vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
-    vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
+    $code .= "\n.L_done_7_remain_${rndsuffix}:\n";
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
 
-    # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
-    # source operand.
-    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+    {
+    $code .= <<___;
+    vmovdqu8        %zmm1, ($output)
+    vmovdqu8        %zmm2, 0x40($output){%k1}
+    jmp     .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_6_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%ymm2
+    add 	         \$0x60,$input
+    and            \$0xf, $length
+    je             .L_done_6_remain_${rndsuffix}
+    vextracti32x4   \$0x1,%zmm10,%xmm12
+    vextracti32x4   \$0x2,%zmm10,%xmm13
+    vinserti32x4    \$0x1,%xmm13,%zmm10,%zmm10
+___
+    }
+
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1, ($output)
+    vmovdqu8 	 %ymm2, 0x40($output)
+    add 	         \$0x60,$output
+    vextracti32x4  \$0x1,%zmm2,%xmm8
+    vmovdqa        %xmm12,%xmm0
+    jmp            .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_6_remain_${rndsuffix}:\n";
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8        %zmm1, ($output)
+    vmovdqu8        %ymm2,0x40($output)
+    jmp             .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_5_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu 	 0x40($input),%xmm2
+    add 	         \$0x50,$input
+    and            \$0xf,$length
+    je             .L_done_5_remain_${rndsuffix}
+    vmovdqa        %xmm10,%xmm12
+    vextracti32x4  \$0x1,%zmm10,%xmm10
+___
+    }
+
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8         %zmm1, ($output)
+    vmovdqu          %xmm2, 0x40($output)
+    add              \$0x50, $output
+    vmovdqa          %xmm2,%xmm8
+    vmovdqa          %xmm12,%xmm0
+    jmp              .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_5_remain_${rndsuffix}:\n";
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8        %zmm1, ($output)
+    vmovdqu8        %xmm2, 0x40($output)
+    jmp             .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_4_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    add 	         \$0x40,$input
+    and            \$0xf, $length
+    je             .L_done_4_remain_${rndsuffix}
+    vextracti32x4   \$0x3,%zmm9,%xmm12
+    vinserti32x4    \$0x3,%xmm10,%zmm9,%zmm9
+___
+    }
+
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8        %zmm1,($output)
+    add             \$0x40,$output
+    vextracti32x4   \$0x3,%zmm1,%xmm8
+    vmovdqa         %xmm12,%xmm0
+    jmp             .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_4_remain_${rndsuffix}:\n";
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 1);
+
+    {
+    $code .= <<___;
+    vmovdqu8        %zmm1, ($output)
+    jmp             .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_3_${rndsuffix}:
+    vmovdqu         ($input),%xmm1
+    vmovdqu         0x10($input),%xmm2
+    vmovdqu         0x20($input),%xmm3
+    add             \$0x30,$input
+    and             \$0xf,$length
+    je              .L_done_3_remain_${rndsuffix}
+    vextracti32x4   \$0x2,%zmm9,%xmm13
+    vextracti32x4   \$0x1,%zmm9,%xmm10
+    vextracti32x4   \$0x3,%zmm9,%xmm11
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    add 	         \$0x30,$output
+    vmovdqa 	 %xmm3,%xmm8
+    vmovdqa        %xmm13,%xmm0
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+    $code .= "\n.L_done_3_remain_${rndsuffix}:\n";
+    $code .= "vextracti32x4   \$0x1,%zmm9,%xmm10\n";
+    $code .= "vextracti32x4   \$0x2,%zmm9,%xmm11\n";
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu %xmm1,($output)
+    vmovdqu %xmm2,0x10($output)
+    vmovdqu %xmm3,0x20($output)
+    jmp     .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_2_${rndsuffix}:
+    vmovdqu         ($input),%xmm1
+    vmovdqu         0x10($input),%xmm2
+    add             \$0x20,$input
+    and             \$0xf,$length
+    je              .L_done_2_remain_${rndsuffix}
+    vextracti32x4   \$0x2,%zmm9,%xmm10
+    vextracti32x4   \$0x1,%zmm9,%xmm12
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    add 	         \$0x20,$output
+    vmovdqa 	 %xmm2,%xmm8
+    vmovdqa 	 %xmm12,%xmm0
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+    $code .= "\n.L_done_2_remain_${rndsuffix}:\n";
+    $code .= "vextracti32x4   \$0x1,%zmm9,%xmm10\n";
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu   %xmm1,($output)
+    vmovdqu   %xmm2,0x10($output)
+    jmp       .L_ret_${rndsuffix}
+
+    .L_remaining_num_blocks_is_1_${rndsuffix}:
+    vmovdqu 	 ($input),%xmm1
+    add 	         \$0x10,$input
+    and            \$0xf,$length
+    je             .L_done_1_remain_${rndsuffix}
+    vextracti32x4  \$0x1,%zmm9,%xmm11
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm11", "%xmm10", "%xmm9", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    add 	         \$0x10,$output
+    vmovdqa 	 %xmm1,%xmm8
+    vmovdqa 	 %xmm9,%xmm0
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_1_remain_${rndsuffix}:\n";
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu   %xmm1, ($output)
+    jmp       .L_ret_${rndsuffix}
+
+    .L_start_by16_${rndsuffix}:
+    vbroadcasti32x4 	 ($TW),%zmm0
+    vbroadcasti32x4 shufb_15_7(%rip),%zmm8
+    mov 	 \$0xaa,$tmp1
+    kmovq 	 $tmp1,%k2
+
+    # Mult tweak by 2^{3, 2, 1, 0}
+    vpshufb 	 %zmm8,%zmm0,%zmm1
+    vpsllvq const_dq3210(%rip),%zmm0,%zmm4
+    vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
+    vpclmulqdq 	 \$0x0,$ZPOLY,%zmm2,%zmm3
+    vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
+    vpxord 	 %zmm4,%zmm3,%zmm9
+
+    # Mult tweak by 2^{7, 6, 5, 4}
+    vpsllvq const_dq7654(%rip),%zmm0,%zmm5
+    vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
+    vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
+    vpxord 	 %zmm5,%zmm7,%zmm10
+
+    # Make next 8 tweek values by all x 2^8
+    vpsrldq 	 \$0xf,%zmm9,%zmm13
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm13,%zmm14
+    vpslldq 	 \$0x1,%zmm9,%zmm11
+    vpxord 	 %zmm14,%zmm11,%zmm11
+
+    vpsrldq 	 \$0xf,%zmm10,%zmm15
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm15,%zmm16
+    vpslldq 	 \$0x1,%zmm10,%zmm12
+    vpxord 	 %zmm16,%zmm12,%zmm12
+
+    .L_main_loop_run_16_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2
+    vmovdqu8 	 0x80($input),%zmm3
+    vmovdqu8 	 0xc0($input),%zmm4
+    vmovdqu8 	 0xf0($input),%zmm5
+    add 	 \$0x100,$input
+___
+    }
+
+    decrypt_by_16_zmm("%zmm1", "%zmm2", "%zmm3", "%zmm4", "%zmm9",
+                      "%zmm10", "%zmm11", "%zmm12", "%zmm0", 0);
+
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %zmm2,0x40($output)
+    vmovdqu8 	 %zmm3,0x80($output)
+    vmovdqu8 	 %zmm4,0xc0($output)
+    add 	 \$0x100,$output
+    sub 	 \$0x100,$length
+    cmp 	 \$0x100,$length
+    jge 	 .L_main_loop_run_16_${rndsuffix}
+
+    cmp 	 \$0x80,$length
+    jge 	 .L_main_loop_run_8_${rndsuffix}
+    jmp 	 .L_do_n_blocks_${rndsuffix}
+
+    .L_start_by8_${rndsuffix}:
+    # Make first 7 tweek values
+    vbroadcasti32x4 	 ($TW),%zmm0
+    vbroadcasti32x4 shufb_15_7(%rip),%zmm8
+    mov 	 \$0xaa,$tmp1
+    kmovq 	 $tmp1,%k2
+
+    # Mult tweak by 2^{3, 2, 1, 0}
+    vpshufb 	 %zmm8,%zmm0,%zmm1
+    vpsllvq const_dq3210(%rip),%zmm0,%zmm4
+    vpsrlvq const_dq5678(%rip),%zmm1,%zmm2
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm2,%zmm3
+    vpxorq 	 %zmm2,%zmm4,%zmm4{%k2}
+    vpxord 	 %zmm4,%zmm3,%zmm9
+
+    # Mult tweak by 2^{7, 6, 5, 4}
+    vpsllvq const_dq7654(%rip),%zmm0,%zmm5
+    vpsrlvq const_dq1234(%rip),%zmm1,%zmm6
+    vpclmulqdq 	 \$0x0,%zmm25,%zmm6,%zmm7
+    vpxorq 	 %zmm6,%zmm5,%zmm5{%k2}
+    vpxord 	 %zmm5,%zmm7,%zmm10
+
+    .L_main_loop_run_8_${rndsuffix}:
+    vmovdqu8 	 ($input),%zmm1
+    vmovdqu8 	 0x40($input),%zmm2
+    vmovdqu8 	 0x70($input),%xmm5
+    add 	         \$0x80,$input
+___
+    }
+
+
+    decrypt_by_eight_zmm("%zmm1", "%zmm2", "%zmm9", "%zmm10", "%zmm0", 0);
+
+    {
+    $code .= <<___;
+    vmovdqu8 	 %zmm1,($output)
+    vmovdqu8 	 %zmm2,0x40($output)
+    add 	 \$0x80,$output
+    sub 	 \$0x80,$length
+    cmp 	 \$0x80,$length
+    jge 	 .L_main_loop_run_8_${rndsuffix}
+    jmp 	 .L_do_n_blocks_${rndsuffix}
+
+    .L_steal_cipher_${rndsuffix}:
+    # start cipher stealing simplified: xmm8-last cipher block, xmm0-next tweak
+    vmovdqa 	 %xmm8,%xmm2
+
+    # shift xmm8 to the left by 16-N_val bytes
+    lea vpshufb_shf_table(%rip),$TEMPLOW
+    vmovdqu 	 ($TEMPLOW,$length,1),%xmm10
+    vpshufb 	 %xmm10,%xmm8,%xmm8
+
+
+    vmovdqu 	 -0x10($input,$length,1),%xmm3
+    vmovdqu 	 %xmm8,-0x10($output,$length,1)
+
+    # shift xmm3 to the right by 16-N_val bytes
+    lea vpshufb_shf_table(%rip), $TEMPLOW
+    add \$16, $TEMPLOW
+    sub 	 $length,$TEMPLOW
+    vmovdqu 	 ($TEMPLOW),%xmm10
+    vpxor mask1(%rip),%xmm10,%xmm10
+    vpshufb 	 %xmm10,%xmm3,%xmm3
+
+    vpblendvb 	 %xmm10,%xmm2,%xmm3,%xmm3
+
+    # xor Tweak value
+    vpxor 	 %xmm0,%xmm3,%xmm8
+
+    # decrypt last block with cipher stealing
+    vpxor 	 ($key1),%xmm8,%xmm8
+    vaesdec 	 0x10($key1),%xmm8,%xmm8
+    vaesdec 	 0x20($key1),%xmm8,%xmm8
+    vaesdec 	 0x30($key1),%xmm8,%xmm8
+    vaesdec 	 0x40($key1),%xmm8,%xmm8
+    vaesdec 	 0x50($key1),%xmm8,%xmm8
+    vaesdec 	 0x60($key1),%xmm8,%xmm8
+    vaesdec 	 0x70($key1),%xmm8,%xmm8
+    vaesdec 	 0x80($key1),%xmm8,%xmm8
+    vaesdec 	 0x90($key1),%xmm8,%xmm8
+    vaesdeclast 	 0xa0($key1),%xmm8,%xmm8
+
+    # xor Tweak value
+    vpxor 	 %xmm0,%xmm8,%xmm8
+
+    .L_done_${rndsuffix}:
+    # store last ciphertext value
+    vmovdqu 	 %xmm8,-0x10($output)
+___
+    }
+
+    {
+    $code .= <<___;
+    .L_ret_${rndsuffix}:
+    mov 	 $GP_STORAGE($TW),%rbx
+    xor    $tmp1,$tmp1
+    mov    $tmp1,$GP_STORAGE($TW)
+    # Zero-out the whole of `%zmm0`.
+    vpxorq %zmm0,%zmm0,%zmm0
+___
+    }
+
+    if ($win64) {
+      $code .= <<___;
+      mov $GP_STORAGE + 8*1($TW),%rdi
+      mov $tmp1,$GP_STORAGE + 8*1($TW)
+      mov $GP_STORAGE + 8*2($TW),%rsi
+      mov $tmp1,$GP_STORAGE + 8*2($TW)
+
+      vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
+      vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
+      vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
+      vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
+
+      # Zero the 64 bytes we just restored to the xmm registers.
+      vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+
+      vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
+      vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
+      vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
+      vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
+
+      # And again.
+      vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+
+      vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
+      vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
+
+      # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
+      # source operand.
+      vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+___
+    }
+
+    {
+    $code .= <<___;
+    mov %rbp,$TW
+    pop %rbp
+    vzeroupper
+    ret
+
+    .L_less_than_128_bytes_${rndsuffix}:
+    cmp 	 \$0x10,$length
+    jb 	 .L_ret_${rndsuffix}
+
+    mov 	 $length,$tmp1
+    and 	 \$0x70,$tmp1
+    cmp 	 \$0x60,$tmp1
+    je 	 .L_num_blocks_is_6_${rndsuffix}
+    cmp 	 \$0x50,$tmp1
+    je 	 .L_num_blocks_is_5_${rndsuffix}
+    cmp 	 \$0x40,$tmp1
+    je 	 .L_num_blocks_is_4_${rndsuffix}
+    cmp 	 \$0x30,$tmp1
+    je 	 .L_num_blocks_is_3_${rndsuffix}
+    cmp 	 \$0x20,$tmp1
+    je 	 .L_num_blocks_is_2_${rndsuffix}
+    cmp 	 \$0x10,$tmp1
+    je 	 .L_num_blocks_is_1_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_7_${rndsuffix}:\n";
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 7);
+
+    {
+    $code .= <<___;
+    add    \$0x70,$input
+    and    \$0xf,$length
+    je      .L_done_7_${rndsuffix}
+
+    .L_steal_cipher_7_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm15,%xmm16
+     vmovdqa     0x10($TW),%xmm15
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 7, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    vmovdqu 	 %xmm5,0x40($output)
+    vmovdqu 	 %xmm6,0x50($output)
+    add 	         \$0x70,$output
+    vmovdqa64 	 %xmm16,%xmm0
+    vmovdqa 	 %xmm7,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_7_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 7, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    vmovdqu 	 %xmm5,0x40($output)
+    vmovdqu 	 %xmm6,0x50($output)
+    add 	         \$0x70,$output
+    vmovdqa 	 %xmm7,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_6_${rndsuffix}:\n";
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 6);
+
+    {
+    $code .= <<___;
+    add    \$0x60,$input
+    and    \$0xf,$length
+    je      .L_done_6_${rndsuffix}
+
+    .L_steal_cipher_6_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm14,%xmm15
+     vmovdqa     0x10($TW),%xmm14
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 6, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    vmovdqu 	 %xmm5,0x40($output)
+    add 	         \$0x60,$output
+    vmovdqa 	 %xmm15,%xmm0
+    vmovdqa 	 %xmm6,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+    $code .= "\n.L_done_6_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 6, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    vmovdqu 	 %xmm5,0x40($output)
+    add 	         \$0x60,$output
+    vmovdqa 	 %xmm6,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_5_${rndsuffix}:\n";
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 5);
+
+    {
+    $code .= <<___;
+    add    \$0x50,$input
+    and    \$0xf,$length
+    je      .L_done_5_${rndsuffix}
+
+    .L_steal_cipher_5_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm13,%xmm14
+     vmovdqa     0x10($TW),%xmm13
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 5, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    add 	         \$0x50,$output
+    vmovdqa 	 %xmm14,%xmm0
+    vmovdqa 	 %xmm5,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_5_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 5, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    vmovdqu 	 %xmm4,0x30($output)
+    add 	         \$0x50,$output
+    vmovdqa 	 %xmm5,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_4_${rndsuffix}:\n";
+
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 4);
+
+    {
+    $code .= <<___;
+    add    \$0x40,$input
+    and    \$0xf,$length
+    je      .L_done_4_${rndsuffix}
+
+    .L_steal_cipher_4_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm12,%xmm13
+     vmovdqa     0x10($TW),%xmm12
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 4, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    add 	         \$0x40,$output
+    vmovdqa 	 %xmm13,%xmm0
+    vmovdqa 	 %xmm4,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_4_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 4, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    vmovdqu 	 %xmm3,0x20($output)
+    add 	         \$0x40,$output
+    vmovdqa 	 %xmm4,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_3_${rndsuffix}:\n";
+
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 3);
+
+    {
+    $code .= <<___;
+    add    \$0x30,$input
+    and    \$0xf,$length
+    je      .L_done_3_${rndsuffix}
+
+    .L_steal_cipher_3_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm11,%xmm12
+     vmovdqa     0x10($TW),%xmm11
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    add 	         \$0x30,$output
+    vmovdqa 	 %xmm12,%xmm0
+    vmovdqa 	 %xmm3,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+    $code .= "\n.L_done_3_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    vmovdqu 	 %xmm2,0x10($output)
+    add 	         \$0x30,$output
+    vmovdqa 	 %xmm3,%xmm8
+    jmp 	         .L_done_${rndsuffix}
 ___
   }
 
-  {
-  $code .= <<___;
-  mov %rbp,$TW
-  pop %rbp
-  vzeroupper
-  ret
+    $code .= "\n.L_num_blocks_is_2_${rndsuffix}:\n";
 
-  .L_less_than_128_bytes_${rndsuffix}:
-  cmp 	 \$0x10,$length
-  jb 	 .L_ret_${rndsuffix}
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 2);
 
-  mov 	 $length,$tmp1
-  and 	 \$0x70,$tmp1
-  cmp 	 \$0x60,$tmp1
-  je 	 .L_num_blocks_is_6_${rndsuffix}
-  cmp 	 \$0x50,$tmp1
-  je 	 .L_num_blocks_is_5_${rndsuffix}
-  cmp 	 \$0x40,$tmp1
-  je 	 .L_num_blocks_is_4_${rndsuffix}
-  cmp 	 \$0x30,$tmp1
-  je 	 .L_num_blocks_is_3_${rndsuffix}
-  cmp 	 \$0x20,$tmp1
-  je 	 .L_num_blocks_is_2_${rndsuffix}
-  cmp 	 \$0x10,$tmp1
-  je 	 .L_num_blocks_is_1_${rndsuffix}
+    {
+    $code .= <<___;
+    add    \$0x20,$input
+    and    \$0xf,$length
+    je      .L_done_2_${rndsuffix}
+
+    .L_steal_cipher_2_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm10,%xmm11
+     vmovdqa     0x10($TW),%xmm10
+___
+    }
+
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    add 	         \$0x20,$output
+    vmovdqa 	 %xmm11,%xmm0
+    vmovdqa 	 %xmm2,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_done_2_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
+
+    {
+    $code .= <<___;
+    vmovdqu 	 %xmm1,($output)
+    add 	         \$0x20,$output
+    vmovdqa 	 %xmm2,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+___
+    }
+
+    $code .= "\n.L_num_blocks_is_1_${rndsuffix}:\n";
+
+    initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+               "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+               "%xmm13", "%xmm14", "%xmm15", 1);
+
+    {
+    $code .= <<___;
+    add    \$0x10,$input
+    and    \$0xf,$length
+    je      .L_done_1_${rndsuffix}
+
+    .L_steal_cipher_1_${rndsuffix}:
+     xor         $gf_poly_8b_temp, $gf_poly_8b_temp
+     shl         \$1, $TEMPLOW
+     adc         $TEMPHIGH, $TEMPHIGH
+     cmovc       $gf_poly_8b, $gf_poly_8b_temp
+     xor         $gf_poly_8b_temp, $TEMPLOW
+     mov         $TEMPLOW,0x10($TW)
+     mov         $TEMPHIGH,0x18($TW)
+     vmovdqa64   %xmm9,%xmm10
+     vmovdqa     0x10($TW),%xmm9
+___
+    }
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+
+    {
+    $code .= <<___;
+    add 	         \$0x10,$output
+    vmovdqa 	 %xmm10,%xmm0
+    vmovdqa 	 %xmm1,%xmm8
+    jmp 	         .L_steal_cipher_${rndsuffix}
+___
+    }
+    $code .= "\n.L_done_1_${rndsuffix}:\n";
+    decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
+                    "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
+                    "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
+
+    {
+    $code .= <<___;
+    add 	         \$0x10,$output
+    vmovdqa 	 %xmm1,%xmm8
+    jmp 	         .L_done_${rndsuffix}
+    .cfi_endproc
 ___
   }
+}
 
-  $code .= "\n.L_num_blocks_is_7_${rndsuffix}:\n";
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 7);
-
-  {
-  $code .= <<___;
-  add    \$0x70,$input
-  and    \$0xf,$length
-  je      .L_done_7_${rndsuffix}
-
-  .L_steal_cipher_7_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm15,%xmm16
-   vmovdqa     0x10($TW),%xmm15
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 7, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  vmovdqu 	 %xmm5,0x40($output)
-  vmovdqu 	 %xmm6,0x50($output)
-  add 	         \$0x70,$output
-  vmovdqa64 	 %xmm16,%xmm0
-  vmovdqa 	 %xmm7,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_7_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 7, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  vmovdqu 	 %xmm5,0x40($output)
-  vmovdqu 	 %xmm6,0x50($output)
-  add 	         \$0x70,$output
-  vmovdqa 	 %xmm7,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_6_${rndsuffix}:\n";
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 6);
-
-  {
-  $code .= <<___;
-  add    \$0x60,$input
-  and    \$0xf,$length
-  je      .L_done_6_${rndsuffix}
-
-  .L_steal_cipher_6_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm14,%xmm15
-   vmovdqa     0x10($TW),%xmm14
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 6, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  vmovdqu 	 %xmm5,0x40($output)
-  add 	         \$0x60,$output
-  vmovdqa 	 %xmm15,%xmm0
-  vmovdqa 	 %xmm6,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-  $code .= "\n.L_done_6_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 6, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  vmovdqu 	 %xmm5,0x40($output)
-  add 	         \$0x60,$output
-  vmovdqa 	 %xmm6,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_5_${rndsuffix}:\n";
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 5);
-
-  {
-  $code .= <<___;
-  add    \$0x50,$input
-  and    \$0xf,$length
-  je      .L_done_5_${rndsuffix}
-
-  .L_steal_cipher_5_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm13,%xmm14
-   vmovdqa     0x10($TW),%xmm13
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 5, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  add 	         \$0x50,$output
-  vmovdqa 	 %xmm14,%xmm0
-  vmovdqa 	 %xmm5,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_5_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 5, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  vmovdqu 	 %xmm4,0x30($output)
-  add 	         \$0x50,$output
-  vmovdqa 	 %xmm5,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_4_${rndsuffix}:\n";
-
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 4);
-
-  {
-  $code .= <<___;
-  add    \$0x40,$input
-  and    \$0xf,$length
-  je      .L_done_4_${rndsuffix}
-
-  .L_steal_cipher_4_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm12,%xmm13
-   vmovdqa     0x10($TW),%xmm12
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 4, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  add 	         \$0x40,$output
-  vmovdqa 	 %xmm13,%xmm0
-  vmovdqa 	 %xmm4,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_4_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 4, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  vmovdqu 	 %xmm3,0x20($output)
-  add 	         \$0x40,$output
-  vmovdqa 	 %xmm4,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_3_${rndsuffix}:\n";
-
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 3);
-
-  {
-  $code .= <<___;
-  add    \$0x30,$input
-  and    \$0xf,$length
-  je      .L_done_3_${rndsuffix}
-
-  .L_steal_cipher_3_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm11,%xmm12
-   vmovdqa     0x10($TW),%xmm11
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  add 	         \$0x30,$output
-  vmovdqa 	 %xmm12,%xmm0
-  vmovdqa 	 %xmm3,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-  $code .= "\n.L_done_3_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 3, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  vmovdqu 	 %xmm2,0x10($output)
-  add 	         \$0x30,$output
-  vmovdqa 	 %xmm3,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_2_${rndsuffix}:\n";
-
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 2);
-
-  {
-  $code .= <<___;
-  add    \$0x20,$input
-  and    \$0xf,$length
-  je      .L_done_2_${rndsuffix}
-
-  .L_steal_cipher_2_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm10,%xmm11
-   vmovdqa     0x10($TW),%xmm10
-___
-  }
-
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  add 	         \$0x20,$output
-  vmovdqa 	 %xmm11,%xmm0
-  vmovdqa 	 %xmm2,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_done_2_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 2, 1);
-
-  {
-  $code .= <<___;
-  vmovdqu 	 %xmm1,($output)
-  add 	         \$0x20,$output
-  vmovdqa 	 %xmm2,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-___
-  }
-
-  $code .= "\n.L_num_blocks_is_1_${rndsuffix}:\n";
-
-  initialize("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-             "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-             "%xmm13", "%xmm14", "%xmm15", 1);
-
-  {
-  $code .= <<___;
-  add    \$0x10,$input
-  and    \$0xf,$length
-  je      .L_done_1_${rndsuffix}
-
-  .L_steal_cipher_1_${rndsuffix}:
-   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
-   shl         \$1, $TEMPLOW
-   adc         $TEMPHIGH, $TEMPHIGH
-   cmovc       $gf_poly_8b, $gf_poly_8b_temp
-   xor         $gf_poly_8b_temp, $TEMPLOW
-   mov         $TEMPLOW,0x10($TW)
-   mov         $TEMPHIGH,0x18($TW)
-   vmovdqa64   %xmm9,%xmm10
-   vmovdqa     0x10($TW),%xmm9
-___
-  }
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-
-  {
-  $code .= <<___;
-  add 	         \$0x10,$output
-  vmovdqa 	 %xmm10,%xmm0
-  vmovdqa 	 %xmm1,%xmm8
-  jmp 	         .L_steal_cipher_${rndsuffix}
-___
-  }
-  $code .= "\n.L_done_1_${rndsuffix}:\n";
-  decrypt_initial("%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6",
-                  "%xmm7", "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12",
-                  "%xmm13", "%xmm14", "%xmm15", "%xmm0", 1, 1);
-
-  {
-  $code .= <<___;
-  add 	         \$0x10,$output
-  vmovdqa 	 %xmm1,%xmm8
-  jmp 	         .L_done_${rndsuffix}
-  .cfi_endproc
-___
-  }
+  encrypt(0); # AES-128
+  decrypt(0); # AES-128
 
   $code .= <<___;
   .section .rodata
