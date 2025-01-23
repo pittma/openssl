@@ -169,26 +169,26 @@ if ($avx512vaes) {
 
 ___
     if ($is_256 == 0) {
-      $code .= "vmovdqu      0xa0($ptr_key2), $key2";
-      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak";  # round 10 for tweak encryption
+      $code .= "vmovdqu      0xa0($ptr_key2), $key2\n";
+      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak\n";  # round 10 for tweak encryption
     } else {
-      $code .= "vmovdqu  0xa0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 10 for tweak encryption
+      $code .= "vmovdqu  0xa0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 10 for tweak encryption
 
-      $code .= "vmovdqu  0xb0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 11 for tweak encryption
+      $code .= "vmovdqu  0xb0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 11 for tweak encryption
       
-      $code .= "vmovdqu  0xc0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 12 for tweak encryption
+      $code .= "vmovdqu  0xc0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 12 for tweak encryption
       
-      $code .= "vmovdqu  0xd0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 13 for tweak encryption
+      $code .= "vmovdqu  0xd0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 13 for tweak encryption
 
-      $code .= "vmovdqu      0xe0($ptr_key2), $key2";
-      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak";  # round 14 for tweak encryption
+      $code .= "vmovdqu      0xe0($ptr_key2), $key2\n";
+      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak\n";  # round 14 for tweak encryption
     }
 
-    $code .= "vmovdqa  $state_tweak, ($TW)";  # Store the encrypted Tweak value
+    $code .= "vmovdqa  $state_tweak, ($TW)\n";  # Store the encrypted Tweak value
   }
 
   # encrypt initial blocks of AES
@@ -500,21 +500,21 @@ ___
 ___
 
     if ($is_256 == 0) {
-      $code .= "vmovdqu      0xa0($ptr_key2), $key2";
-      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak";  # round 10 for tweak encryption
+      $code .= "vmovdqu      0xa0($ptr_key2), $key2\n";
+      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak\n";  # round 10 for tweak encryption
     } else {
-      $code .= "vmovdqu  0xa0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 10 for tweak encryption
-      $code .= "vmovdqu  0xb0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 11 for tweak encryption
-      $code .= "vmovdqu  0xc0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 12 for tweak encryption
-      $code .= "vmovdqu  0xd0($ptr_key2), $key2";
-      $code .= "vaesenc  $key2, $state_tweak, $state_tweak";  # round 13 for tweak encryption
-      $code .= "vmovdqu  0xe0($ptr_key2), $key2";
-      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak";  # round 14 for tweak encryption
+      $code .= "vmovdqu  0xa0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 10 for tweak encryption
+      $code .= "vmovdqu  0xb0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 11 for tweak encryption
+      $code .= "vmovdqu  0xc0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 12 for tweak encryption
+      $code .= "vmovdqu  0xd0($ptr_key2), $key2\n";
+      $code .= "vaesenc  $key2, $state_tweak, $state_tweak\n";  # round 13 for tweak encryption
+      $code .= "vmovdqu  0xe0($ptr_key2), $key2\n";
+      $code .= "vaesenclast  $key2, $state_tweak, $state_tweak\n";  # round 14 for tweak encryption
     }
-    $code .= "vmovdqa  $state_tweak, ($TW)";  # Store the encrypted Tweak value
+    $code .= "vmovdqa  $state_tweak, ($TW)\n";  # Store the encrypted Tweak value
   }
 
   # decrypt initial blocks of AES
@@ -843,8 +843,8 @@ ___
     $code .= "vbroadcasti32x4 ($key1), $tmp\n";
     $code .= "vpternlogq      \$0x96, $tmp, $tw1, $st1\n";
 
-    my $i = $is_256 ? 14 : 10;
-    for ($i < 10; $i++) {
+    my $j = $is_256 ? 14 : 10;
+    for (my $i = 1; $i < $j; $i++) {
       $code .= "vbroadcasti32x4 16*$i($key1), $tmp\n";
       $code .= "vaesenc  $tmp, $st1, $st1\n";
     }
@@ -940,35 +940,35 @@ ___
 
     if ($is_256 == 0) {
       # round 10
-      $code .= "vbroadcasti32x4 0xa0($key1), $t0";
-      $code .= "vaesenclast  $t0, $st1, $st1";
-      $code .= "vaesenclast  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+      $code .= "vaesenclast  $t0, $st1, $st1\n";
+      $code .= "vaesenclast  $t0, $st2, $st2\n";
     } else {
       # round 10
-      $code .= "vbroadcasti32x4 0xa0($key1), $t0";
-      $code .= "vaesenc  $t0, $st1, $st1";
-      $code .= "vaesenc  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+      $code .= "vaesenc  $t0, $st1, $st1\n";
+      $code .= "vaesenc  $t0, $st2, $st2\n";
       # round 11
-      $code .= "vbroadcasti32x4 0xb0($key1), $t0";
-      $code .= "vaesenc  $t0, $st1, $st1";
-      $code .= "vaesenc  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xb0($key1), $t0\n";
+      $code .= "vaesenc  $t0, $st1, $st1\n";
+      $code .= "vaesenc  $t0, $st2, $st2\n";
       # round 12
-      $code .= "vbroadcasti32x4 0xc0($key1), $t0";
-      $code .= "vaesenc  $t0, $st1, $st1";
-      $code .= "vaesenc  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xc0($key1), $t0\n";
+      $code .= "vaesenc  $t0, $st1, $st1\n";
+      $code .= "vaesenc  $t0, $st2, $st2\n";
       # round 13
-      $code .= "vbroadcasti32x4 0xd0($key1), $t0";
-      $code .= "vaesenc  $t0, $st1, $st1";
-      $code .= "vaesenc  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xd0($key1), $t0\n";
+      $code .= "vaesenc  $t0, $st1, $st1\n";
+      $code .= "vaesenc  $t0, $st2, $st2\n";
       # round 14
-      $code .= "vbroadcasti32x4 0xe0($key1), $t0";
-      $code .= "vaesenclast  $t0, $st1, $st1";
-      $code .= "vaesenclast  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xe0($key1), $t0\n";
+      $code .= "vaesenclast  $t0, $st1, $st1\n";
+      $code .= "vaesenclast  $t0, $st2, $st2\n";
     }
 	
     # xor Tweak values
-    $code .= "vpxorq    $tw1, $st1, $st1";
-    $code .= "vpxorq    $tw2, $st2, $st2";
+    $code .= "vpxorq    $tw1, $st1, $st1\n";
+    $code .= "vpxorq    $tw2, $st2, $st2\n";
     if (0 == $last_eight) {
       # load next Tweak values
       $code .= <<___;
@@ -1068,39 +1068,39 @@ ___
 ___
     if ($is_256 == 0) {
       # round 10
-      $code .= "vbroadcasti32x4 0xa0($key1), $t0";
-      $code .= "vaesdeclast  $t0, $st1, $st1";
-      $code .= "vaesdeclast  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+      $code .= "vaesdeclast  $t0, $st1, $st1\n";
+      $code .= "vaesdeclast  $t0, $st2, $st2\n";
     } else {
       # round 10
-      $code .= "vbroadcasti32x4 0xa0($key1), $t0";
-      $code .= "vaesdec  $t0, $st1, $st1";
-      $code .= "vaesdec  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xa0($key1), $t0\n";
+      $code .= "vaesdec  $t0, $st1, $st1\n";
+      $code .= "vaesdec  $t0, $st2, $st2\n";
       # round 11
-      $code .= "vbroadcasti32x4 0xb0($key1), $t0";
-      $code .= "vaesdec  $t0, $st1, $st1";
-      $code .= "vaesdec  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xb0($key1), $t0\n";
+      $code .= "vaesdec  $t0, $st1, $st1\n";
+      $code .= "vaesdec  $t0, $st2, $st2\n";
       # round 12
-      $code .= "vbroadcasti32x4 0xc0($key1), $t0";
-      $code .= "vaesdec  $t0, $st1, $st1";
-      $code .= "vaesdec  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xc0($key1), $t0\n";
+      $code .= "vaesdec  $t0, $st1, $st1\n";
+      $code .= "vaesdec  $t0, $st2, $st2\n";
       # round 13
-      $code .= "vbroadcasti32x4 0xd0($key1), $t0";
-      $code .= "vaesdec  $t0, $st1, $st1";
-      $code .= "vaesdec  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xd0($key1), $t0\n";
+      $code .= "vaesdec  $t0, $st1, $st1\n";
+      $code .= "vaesdec  $t0, $st2, $st2\n";
       # round 14
-      $code .= "vbroadcasti32x4 0xe0($key1), $t0";
-      $code .= "vaesdeclast  $t0, $st1, $st1";
-      $code .= "vaesdeclast  $t0, $st2, $st2";
+      $code .= "vbroadcasti32x4 0xe0($key1), $t0\n";
+      $code .= "vaesdeclast  $t0, $st1, $st1\n";
+      $code .= "vaesdeclast  $t0, $st2, $st2\n";
     }
 
     # xor Tweak values
-    $code .= "vpxorq    $tw1, $st1, $st1";
-    $code .= "vpxorq    $tw2, $st2, $st2";
+    $code .= "vpxorq    $tw1, $st1, $st1\n";
+    $code .= "vpxorq    $tw2, $st2, $st2\n";
 
     # load next Tweak values
-    $code .= "vmovdqa32  %zmm15, $tw1";
-    $code .= "vmovdqa32  %zmm16, $tw2";
+    $code .= "vmovdqa32  %zmm15, $tw1\n";
+    $code .= "vmovdqa32  %zmm16, $tw2\n";
 ___
   }
 
@@ -1444,8 +1444,6 @@ ___
   # ;               const uint8_t iv[16])     // initial tweak value, 16 bytes
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  my $rndsuffix = &random_string();
-
   $code .= ".text\n";
 
   {
@@ -1473,6 +1471,7 @@ ___
   }
 
   sub encrypt {
+    my $rndsuffix = &random_string();
     my $is_256 = $_[0];
 
     if ($is_256 == 0) {
@@ -1843,7 +1842,7 @@ ___
 ___
     }
     if ($is_256 == 0) {
-      $code .= "vaesenclast  0xa0($key1),%xmm8,%xmm8";
+      $code .= "vaesenclast  0xa0($key1),%xmm8,%xmm8\n";
     } else {
       $code .= <<___;
       vaesenc 	 0xa0($key1),%xmm8,%xmm8
@@ -2178,18 +2177,28 @@ ___
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   sub decrypt {
-    my $is_256 = $_[0];
     my $rndsuffix = &random_string();
+    my $is_256 = $_[0];
   
-    {
-    $code.=<<___;
-    .globl	aesni_xts_128_decrypt_avx512
-    .hidden	aesni_xts_128_decrypt_avx512
-    .type	aesni_xts_128_decrypt_avx512,\@abi-omnipotent
-    .align	32
-    aesni_xts_128_decrypt_avx512:
-    .cfi_startproc
-    endbranch
+    if ($is_256 == 0) {
+      $code.=<<___;
+      .globl	aesni_xts_128_decrypt_avx512
+      .hidden	aesni_xts_128_decrypt_avx512
+      .type	aesni_xts_128_decrypt_avx512,\@abi-omnipotent
+      .align	32
+      aesni_xts_128_decrypt_avx512:
+      .cfi_startproc
+      endbranch
+___
+    } else {
+      $code.=<<___;
+      .globl	aesni_xts_256_decrypt_avx512
+      .hidden	aesni_xts_256_decrypt_avx512
+      .type	aesni_xts_256_decrypt_avx512,\@abi-omnipotent
+      .align	32
+      aesni_xts_256_decrypt_avx512:
+      .cfi_startproc
+      endbranch
 ___
     }
     $code .= "push 	 %rbp\n";
@@ -2218,7 +2227,7 @@ ___
     $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n"; # for key expansion
 
     encrypt_tweak_for_decryption("%xmm0", "%xmm1", "%xmm2", "%xmm3",
-                                 $key2, $key1);
+                                 $key2, $key1, $is_256);
 
     if ($win64) {
       $code .= "mov	 $input, 8 + 8*5(%rbp)\n"; # ciphertext pointer
@@ -2671,13 +2680,15 @@ ___
 ___
     }
     if ($is_256 == 0) {
-      $code .= "vaesdeclast  0xa0($key1),%xmm8,%xmm8";
+      $code .= "vaesdeclast  0xa0($key1),%xmm8,%xmm8\n";
     } else {
-      $code .= "vaesdec  0xa0($key1),%xmm8,%xmm8";
-      $code .= "vaesdec  0xb0($key1),%xmm8,%xmm8";
-      $code .= "vaesdec  0xc0($key1),%xmm8,%xmm8";
-      $code .= "vaesdec  0xd0($key1),%xmm8,%xmm8";
-      $code .= "vaesdeclast  0xe0($key1),%xmm8,%xmm8";
+      $code .=<<___;
+      vaesdec  0xa0($key1),%xmm8,%xmm8
+      vaesdec  0xb0($key1),%xmm8,%xmm8
+      vaesdec  0xc0($key1),%xmm8,%xmm8
+      vaesdec  0xd0($key1),%xmm8,%xmm8
+      vaesdeclast  0xe0($key1),%xmm8,%xmm8
+___
     }
 
     {
