@@ -85,7 +85,7 @@ if ($avx512vaes) {
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   my ($key2, $key1, $tweak, $length, $input, $output);
 
- 
+
 $input    = "%rdi";
 $output   = "%rsi";
 $length   = "%rdx";
@@ -614,7 +614,7 @@ ___
       vaesenclast  $t0, $st2, $st2
 ___
     }
-	
+
     # xor Tweak values
     $code .= "vpxorq    $tw1, $st1, $st1\n";
     $code .= "vpxorq    $tw2, $st2, $st2\n";
@@ -1179,6 +1179,12 @@ ___
       $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
     }
 
+    if ($is_128) {
+      $code .= ".L_aesni_xts_128_encrypt_avx512_body:";
+    } else {
+      $code .= ".L_aesni_xts_256_encrypt_avx512_body:";
+    }
+
     $code .= "mov 	 \$0x87, $gf_poly_8b\n";
     $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
 
@@ -1502,8 +1508,14 @@ ___
     }
 
     {
+    $code .= ".L_ret_${rndsuffix}:"
+    if ($is_128) {
+      $code .= ".Laesni_xts_128_encrypt_avx512_epilogue:";
+    } else {
+      $code .=".Laesni_xts_256_encrypt_avx512_epilogue:";
+    }
+
     $code .= <<___;
-    .L_ret_${rndsuffix}:
     mov 	 $GP_STORAGE($TW),%rbx
     xor    $tmp1,$tmp1
     mov    $tmp1,$GP_STORAGE($TW)
@@ -1860,6 +1872,12 @@ ___
       $code .= "vmovdqa      %xmm13, $XMM_STORAGE + 16*7($TW)\n";
       $code .= "vmovdqa      %xmm14, $XMM_STORAGE + 16*8($TW)\n";
       $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
+    }
+
+    if ($is_128) {
+      $code .= ".L_aesni_xts_128_decrypt_avx512_body:";
+    } else {
+      $code .= ".L_aesni_xts_256_decrypt_avx512_body:";
     }
 
     $code .= "mov 	 \$0x87, $gf_poly_8b\n";
@@ -2338,8 +2356,13 @@ ___
     }
 
     {
+    $code .= ".L_ret_${rndsuffix}:";
+    if ($is_128) {
+      $code .= ".Laesni_xts_128_decrypt_avx512_epilogue:";
+    } else {
+      $code .=".Laesni_xts_256_decrypt_avx512_epilogue:";
+    }
     $code .= <<___;
-    .L_ret_${rndsuffix}:
     mov 	 $GP_STORAGE($TW),%rbx
     xor    $tmp1,$tmp1
     mov    $tmp1,$GP_STORAGE($TW)
@@ -2837,8 +2860,146 @@ ___
     .byte  15, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 7, 0xff, 0xff
     .byte  0xff, 0xff, 0xff, 0xff, 0xff
 
-.text
+    .text
 ___
+
+  if ($win64) {
+    $rec="%rcx";
+    $frame="%rdx";
+    $context="%r8";
+    $disp="%r9";
+
+    $code.=<<___;
+    .extern     __imp_RtlVirtualUnwind
+    .type   xts_avx512_seh_handler,\@abi-omnipotent
+    .align  16
+    xts_avx512_seh_handler:
+        push    %rsi
+        push    %rdi
+        push    %rbx
+        push    %rbp
+        push    %r12
+        push    %r13
+        push    %r14
+        push    %r15
+        pushfq
+        sub     \$64,%rsp
+
+        mov     120($context),%rax # pull context->Rax
+        mov     248($context),%rbx # pull context->Rip
+
+        mov     8($disp),%rsi      # disp->ImageBase
+        mov     56($disp),%r11     # disp->HandlerData
+
+        mov     0(%r11),%r10d      # HandlerData[0]
+        lea     (%rsi,%r10),%r10   # prologue label
+        cmp     %r10,%rbx          # context->Rip<.Lprologue
+        jb  .Lcommon_seh_tail
+
+        mov     152($context),%rax # pull context->Rsp
+
+        mov     4(%r11),%r10d      # HandlerData[1]
+        lea     (%rsi,%r10),%r10   # epilogue label
+        cmp     %r10,%rbx          # context->Rip>=.Lepilogue
+        jae     .Lcommon_seh_tail
+
+        lea     48(%rax),%rax
+
+        mov     -8(%rax),%rbx
+        mov     -16(%rax),%rbp
+        mov     -24(%rax),%r12
+        mov     -32(%rax),%r13
+        mov     -40(%rax),%r14
+        mov     -48(%rax),%r15
+        mov     %rbx,144($context) # restore context->Rbx
+        mov     %rbp,160($context) # restore context->Rbp
+        mov     %r12,216($context) # restore context->R12
+        mov     %r13,224($context) # restore context->R13
+        mov     %r14,232($context) # restore context->R14
+        mov     %r15,240($context) # restore context->R14
+
+    .Lcommon_seh_tail:
+        mov     8(%rax),%rdi
+        mov     16(%rax),%rsi
+        mov     %rax,152($context) # restore context->Rsp
+        mov     %rsi,168($context) # restore context->Rsi
+        mov     %rdi,176($context) # restore context->Rdi
+
+        mov     40($disp),%rdi     # disp->ContextRecord
+        mov     $context,%rsi      # context
+        mov     \$154,%ecx         # sizeof(CONTEXT)
+        .long   0xa548f3fc         # cld; rep movsq
+
+        mov     $disp,%rsi
+        xor     %rcx,%rcx          # arg1, UNW_FLAG_NHANDLER
+        mov     8(%rsi),%rdx       # arg2, disp->ImageBase
+        mov     0(%rsi),%r8        # arg3, disp->ControlPc
+        mov     16(%rsi),%r9       # arg4, disp->FunctionEntry
+        mov     40(%rsi),%r10      # disp->ContextRecord
+        lea     56(%rsi),%r11      # &disp->HandlerData
+        lea     24(%rsi),%r12      # &disp->EstablisherFrame
+        mov     %r10,32(%rsp)      # arg5
+        mov     %r11,40(%rsp)      # arg6
+        mov     %r12,48(%rsp)      # arg7
+        mov     %rcx,56(%rsp)      # arg8, (NULL)
+        call    *__imp_RtlVirtualUnwind(%rip)
+
+        mov     \$1,%eax           # ExceptionContinueSearch
+        add     \$64,%rsp
+        popfq
+        pop     %r15
+        pop     %r14
+        pop     %r13
+        pop     %r12
+        pop     %rbp
+        pop     %rbx
+        pop     %rdi
+        pop     %rsi
+        ret
+    .size   xts_avx512_seh_handler,.-xts_avx512_seh_handler
+
+    .section    .pdata
+    .align  4
+        .rva    .LSEH_begin_aesni_xts_128_encrypt_avx512
+        .rva    .LSEH_end_aesni_xts_128_encrypt_avx512
+        .rva    .LSEH_info_aesni_xts_128_encrypt_avx512
+
+        .rva    .LSEH_begin_aesni_xts_128_decrypt_avx512
+        .rva    .LSEH_end_aesni_xts_128_decrypt_avx512
+        .rva    .LSEH_info_aesni_xts_128_decrypt_avx512
+
+        .rva    .LSEH_begin_aesni_xts_256_encrypt_avx512
+        .rva    .LSEH_end_aesni_xts_256_encrypt_avx512
+        .rva    .LSEH_info_aesni_xts_256_encrypt_avx512
+
+        .rva    .LSEH_begin_aesni_xts_256_decrypt_avx512
+        .rva    .LSEH_end_aesni_xts_256_decrypt_avx512
+        .rva    .LSEH_info_aesni_xts_256_decrypt_avx512
+
+
+    .section    .xdata
+    .align  8
+    .LSEH_info_aesni_xts_128_encrypt_avx512:
+        .byte   9,0,0,0
+        .rva    xts_avx512_seh_handler
+        .rva    .Laesni_xts_128_encrypt_avx512_body,.Laesni_xts_128_encrypt_avx512_epilogue
+
+    .LSEH_info_aesni_xts_128_decrypt_avx512:
+        .byte   9,0,0,0
+        .rva    xts_avx512_seh_handler
+        .rva    .Laesni_xts_128_decrypt_avx512_body,.Laesni_xts_128_decrypt_avx512_epilogue
+
+    .LSEH_info_aesni_xts_256_encrypt_avx512:
+        .byte   9,0,0,0
+        .rva    xts_avx512_seh_handler
+        .rva    .Laesni_xts_256_encrypt_avx512_body,.Laesni_xts_256_encrypt_avx512_epilogue
+
+    .LSEH_info_aesni_xts_256_decrypt_avx512:
+        .byte   9,0,0,0
+        .rva    xts_avx512_seh_handler
+        .rva    .Laesni_xts_256_decrypt_avx512_body,.Laesni_xts_256_decrypt_avx512_epilogue
+___
+  }
 
 } else {
     $code .= <<___;
