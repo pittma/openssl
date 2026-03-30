@@ -1508,7 +1508,7 @@ ___
     }
 
     {
-    $code .= ".L_ret_${rndsuffix}:"
+    $code .= ".L_ret_${rndsuffix}:";
     if ($is_128) {
       $code .= ".Laesni_xts_128_encrypt_avx512_epilogue:";
     } else {
